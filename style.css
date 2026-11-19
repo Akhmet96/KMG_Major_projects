@@ -1033,3 +1033,17 @@ tr.ind-pct td{font-style:italic;color:var(--ink-2)}
 @media (prefers-reduced-motion:reduce){.ov-tl-row,.ov-tl-bar{animation:none!important}}
 .ov-mk.sm{font-size:9.5px;letter-spacing:0}
 @media (max-width:760px){.ov-tl-ax span.odd{display:none}}
+
+/* ===== Спокойный режим графиков: без постоянной анимации, только появление ===== */
+/* панели: сканирующая волна, дрейфующее свечение и бегущая сетка */
+.hbp::before,.hbp::after,.hbp .hb::before{display:none!important;animation:none!important}
+/* бары: бегущие полосы, блик, пульс на конце */
+.hb-bar::before,.hb-bar::after{display:none!important;animation:none!important}
+.hb-cap::after{display:none!important}
+/* кольца и донат: бегущие дуги, дыхание, волны, сигнальные точки */
+.rg-flow,.dn-flow,.rg-halo,.dn-wave,.fx-pulse{display:none!important}
+.rg-breath,.dn-breath{animation:none!important}
+.rg-tk.on,.dn-tk{animation:fxTick .35s ease-out backwards!important;animation-delay:var(--d1)!important;opacity:1}
+/* схема раздела продукции и проекты: пульсирующее свечение */
+.sc-node.st2{animation:scIn .55s cubic-bezier(.2,.8,.2,1) backwards!important}
+.pj-stage::before{animation:none!important}
