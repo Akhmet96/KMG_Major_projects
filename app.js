@@ -309,9 +309,9 @@ function srcNote(t) { return `<div class="src">Источник: ${NM(t)}</div>`
    State
    ============================================================ */
 const TABS = [
-  { id: 'geo', t: 'Геология' }, { id: 'prod', t: 'Добыча' }, { id: 'mk', t: 'Маркетинг' }, { id: 'en', t: 'Энергетика' },
+  { id: 'ov', t: 'Общие данные' }, { id: 'geo', t: 'Геология' }, { id: 'prod', t: 'Добыча' }, { id: 'mk', t: 'Маркетинг' }, { id: 'en', t: 'Энергетика' },
   { id: 'eco', t: 'Экология' }, { id: 'rel', t: 'Надёжность' }, { id: 'lc', t: 'Местное содержание' }, { id: 'econ', t: 'Экономика' }, { id: 'proj', t: 'Проекты' }];
-const S = { tab: 'geo', field: 'all', sub: {} };
+const S = { tab: 'ov', field: 'all', sub: {} };
 function readHash() {
   const [t, f] = location.hash.replace('#', '').split('/');
   if (TABS.some(x => x.id === t)) S.tab = t;
@@ -371,6 +371,96 @@ $('#themeBtn').addEventListener('click', e => {
     { duration: 650, easing: 'cubic-bezier(.2,.8,.2,1)', pseudoElement: '::view-transition-new(root)' })).catch(() => { });
 });
 try { const t = localStorage.getItem('kmg-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) { }
+
+/* ============================================================
+   ОБЩИЕ ДАННЫЕ (паспорт месторождений по справке)
+   ============================================================ */
+const OV = () => DATA.overview || { fields: {} };
+const ovF = k => OV().fields[k];
+const ovNow = () => { const m = /(\d{2})\.(\d{2})\.(\d{4})/.exec(OV().asof || ''); return m ? +m[3] + (+m[2] - 1) / 12 : 2026.75; };
+const ovNum = (v, u) => Array.isArray(v) ? `${fmt(v[0])}–${fmt(v[1])}` : (typeof v === 'number' ? fmtF(v, (String(v).split('.')[1] || '').length) : esc(v));
+const ovVal = (v, u) => `<b>${ovNum(v)}</b>${u ? ` <small>${esc(u)}</small>` : ''}`;
+const ovLeft = k => { const c = ovF(k).contract; return Math.max(0, c.to - ovNow()); };
+const ovYears = n => { const a = Math.floor(n), m = a % 100, l = a % 10; return `${a} ${m >= 11 && m <= 14 ? 'лет' : l === 1 ? 'год' : l >= 2 && l <= 4 ? 'года' : 'лет'}`; };
+
+function ovTimeline(keys) {
+  const A = 1990, B = 2045, now = ovNow(), X = y => ((y - A) / (B - A) * 100).toFixed(2);
+  const ticks = []; for (let y = A; y <= B; y += 5) ticks.push(`<span${y % 10 ? ' class="odd"' : ''} style="left:${X(y)}%">${y}</span>`);
+  const rows = keys.map((k, i) => {
+    const c = ovF(k).contract, done = clamp((now - c.from) / (c.to - c.from), 0, 1);
+    return `<div class="ov-tl-row" style="--i:${i};--c:${FC(k)}"><span class="ov-tl-n">${dotHTML(k)}<b>${esc(FS(k))}</b><small>${esc(c.type)}</small></span>
+      <div class="ov-tl-track"><div class="ov-tl-bar" style="left:${X(c.from)}%;width:${(X(c.to) - X(c.from)).toFixed(2)}%"><i style="width:${(done * 100).toFixed(1)}%"></i></div>
+      <span class="ov-tl-y a" style="left:${X(c.from)}%">${c.from}</span><span class="ov-tl-y b" style="left:${X(c.to)}%">${c.to}</span></div>
+      <span class="ov-tl-r">осталось <b>${ovYears(ovLeft(k))}</b><small>${pct(done, 0)} срока</small></span></div>`;
+  }).join('');
+  return `<div class="ov-tl"><div class="ov-tl-ax">${ticks.join('')}</div>${rows}<div class="ov-tl-nw"><div class="ov-tl-now" style="left:${X(now)}%"><span>${esc(OV().asof)}</span></div></div></div>`;
+}
+
+function ovBlock(title, body) { return `<div class="ov-b"><h4>${title}</h4>${body}</div>`; }
+function ovList(rows) {
+  return `<dl class="ov-dl">${rows.map(r => `<dt${r.sub ? ' class="sub"' : ''}>${esc(r.l)}${r.n ? `<i>${esc(r.n)}</i>` : ''}</dt><dd>${r.v === '' || r.v == null ? '' : r.u !== undefined ? ovVal(r.v, r.u) : esc(r.v)}</dd>`).join('')}</dl>`;
+}
+function ovRes(res) {
+  const rows = res.rows.map(r => ({ l: r.l, v: `${ovNum(r.geo)} / ${r.rec == null ? '—' : `<b>${ovNum(r.rec)}</b>`}`, u: r.u }));
+  return `<p class="ov-cap">${esc(res.head)}</p><dl class="ov-dl">${rows.map(r => `<dt>${esc(r.l)}</dt><dd>${r.v} <small>${esc(r.u)}</small></dd>`).join('')}${res.extra ? `<dt><b>${esc(res.extra.l)}</b></dt><dd>${ovVal(res.extra.v, res.extra.u)}</dd>` : ''}</dl>`;
+}
+function ovCard(k, full) {
+  const f = ovF(k), c = f.contract;
+  return `<article class="ov-card" style="--c:${FC(k)}">
+    <header><span class="ov-mk${FS(k).length > 4 ? ' sm' : ''}">${esc(FS(k))}</span><div><h3>${esc(FS(k))}</h3><span class="ov-fn">${esc(FN(k))}</span></div></header>
+    <div class="ov-ct"><span>${esc(c.type)}</span><b>${c.from} – ${c.to} гг.</b><small>осталось ${ovYears(ovLeft(k))}</small></div>
+    ${ovBlock('Накопленная добыча', ovList(f.cum))}
+    ${ovBlock('Запасы', ovRes(f.res))}
+    ${ovBlock('Текущая добыча', ovList(f.cur))}
+    ${ovBlock(`Производственные объекты${f.fac.n ? ` <small>(${esc(f.fac.n)})</small>` : ''}`, ovList(f.fac.rows))}
+    ${ovBlock('Экспортные маршруты', ovList(f.exp))}
+    <div class="ov-fin"><p class="ov-cap">${esc(f.fin.period[0].toUpperCase() + f.fin.period.slice(1))}</p>${ovList(f.fin.rows)}</div>
+    ${full ? '' : `<button type="button" class="ov-go" data-goto="${k}">Подробнее о ${esc(FS(k))} →</button>`}
+  </article>`;
+}
+const ovKeys = () => FIELDS.filter(k => ovF(k));
+const ovBars = (keys, key, unit, d) => hbars(keys.map(k => { const m = ovF(k).m, v = m[key]; return { label: `${dotHTML(k)} ${esc(FS(k))}`, bars: [{ v, color: FC(k), text: v == null ? 'нет данных' : `${key === 'oilDay' && m.oilDayText ? m.oilDayText : fmt(v, d)} ${unit}` }] }; }));
+const ovRings = keys => rings(keys.map(k => { const m = ovF(k).m, r = m.cumOil / (m.cumOil + m.remOil); return { r, color: FC(k), text: pct(r, 0), label: `${dotHTML(k)}${esc(FS(k))}`, sub: `${fmt(m.cumOil, 1)} из ${fmt(m.cumOil + m.remOil, 0)} млн т` }; }));
+const ovNote = 'Нефть: у КПО — жидкие углеводороды (добыча) и конденсат (запасы); у НКОК остаточные извлекаемые — по категории С1; у Дунги — остаточные извлекаемые 20 млн т.';
+
+RENDER.ov = {
+  all() {
+    const K = ovKeys(); if (!K.length) return `<section>${secHead('Общие данные', '')}<div class="empty-note">Нет данных</div></section>`;
+    const M = K.map(k => ovF(k).m);
+    let html = secHead('Общие данные по месторождениям', `Сроки контрактов, запасы, текущая и накопленная добыча, производственные объекты, экспортные маршруты и финансовые итоги. Данные на ${esc(OV().asof)}.`);
+    html += kpis([
+      { l: 'Текущая добыча нефти и ЖУ', v: '≈' + fmt(sum(M.map(m => m.oilDay)), 0), u: 'тыс. т/сут', s: K.map(k => `${FS(k)} ${ovF(k).m.oilDayText || fmt(ovF(k).m.oilDay)}`).join(' · ') },
+      { l: 'Накопленная добыча нефти и ЖУ', v: fmt(sum(M.map(m => m.cumOil)), 0), u: 'млн т', s: 'за всё время работы' },
+      { l: 'Инвестиции', v: fmt(sum(M.map(m => m.invest)), 1), u: 'млрд $', s: K.filter(k => ovF(k).m.invest != null).map(FS).join(', ') },
+      { l: 'Выплаты в бюджет РК', v: fmt(sum(M.map(m => m.rk)), 1), u: 'млрд $', s: 'нарастающим итогом с начала контрактов' }]);
+    html += panel('Сроки контрактов', '', ovTimeline(K), `Заливка — истекшая часть срока на ${esc(OV().asof)}; вертикальная линия — текущая дата.`);
+    html += `<div class="grid2">${panel('Текущая добыча нефти / ЖУ', 'тыс. т/сут', ovBars(K, 'oilDay', 'тыс. т/сут'), 'КПО — диапазон 28–29 тыс. т/сут, на графике среднее.')}
+      ${panel('Накопленная добыча нефти / ЖУ', 'млн т', ovBars(K, 'cumOil', 'млн т'))}
+      ${panel('Остаточные извлекаемые запасы нефти / конденсата', 'млн т', ovBars(K, 'remOil', 'млн т'), ovNote)}
+      ${panel('Отобрано от начальных извлекаемых запасов', '%', ovRings(K), 'Накопленная добыча / (накопленная добыча + остаточные извлекаемые запасы).')}</div>`;
+    const fin = [['invest', 'Инвестиции', 'var(--c2)'], ['rk', 'Выплаты РК', 'var(--c1)'], ['kmg', 'КМГ (дивиденды / выплаты)', 'var(--c3)']];
+    html += panel('Финансовые итоги с начала контрактов', 'млрд $', hbLegend(fin.map(([, n, c]) => ({ name: n, color: c }))) + hbars(K.map(k => ({ label: `${dotHTML(k)} ${esc(FS(k))}`, extra: esc(ovF(k).fin.period), bars: fin.map(([key, , c]) => { const v = ovF(k).m[key]; return { v, color: c, text: v == null ? 'нет данных' : `${fmt(v, v < 1 ? 3 : 1)} млрд $` }; }) }))),
+      'Периоды различаются: ТШО, КПО, НКОК — по 01.09.2026, Дунга — по 01.10.2026. У НКОК вместо выплат акционерам — возмещаемые затраты акционерам (58 млрд $).');
+    html += `<h3 class="sub-h">Карточки месторождений</h3><div class="ov-grid">${K.map(k => ovCard(k)).join('')}</div>`;
+    return `<section>${html}${srcNote(OV().src)}</section>`;
+  },
+  field(k) {
+    const f = ovF(k); if (!f) return `<section>${secHead(`Общие данные · ${FN(k)}`, '')}<div class="empty-note">Нет данных</div></section>`;
+    const m = f.m, c = f.contract;
+    let html = secHead(`Общие данные · ${FN(k)}`, `Контракт (${c.type}) ${c.from}–${c.to} гг. Данные на ${esc(OV().asof)}.`);
+    html += kpis([
+      { l: `Текущая добыча: ${f.cur[0].l.toLowerCase()}`, v: m.oilDayText || fmt(m.oilDay), u: 'тыс. т/сут', s: f.cur[0].n || '' },
+      { l: `Накопленная добыча: ${f.cum[0].l.toLowerCase()}`, v: fmt(m.cumOil, m.cumOil < 10 ? 2 : 1), u: 'млн т', s: f.cum[1] ? `${f.cum[1].l.toLowerCase()} — ${fmt(f.cum[1].v)} ${f.cum[1].u}` : '' },
+      { l: 'Остаточные извлекаемые запасы', v: fmt(m.remOil), u: 'млн т', s: `отобрано ${pct(m.cumOil / (m.cumOil + m.remOil), 0)} от начальных извлекаемых` },
+      { l: 'До окончания контракта', v: ovYears(ovLeft(k)), s: `${c.type}, ${c.from}–${c.to} гг.` }]);
+    html += panel('Срок контракта', '', ovTimeline([k]));
+    html += `<div class="grid2">${ovCard(k, true)}<div class="stack">
+      ${panel('Отобрано от начальных извлекаемых запасов', '%', ovRings([k]), ({ X: 'Остаточные извлекаемые запасы — по категории С1.', Z: 'Накопленная добыча — жидкие углеводороды, запасы — конденсат.', D: 'Остаточные извлекаемые запасы — 20 млн т по справке.' })[k] || 'Накопленная добыча / (накопленная добыча + остаточные извлекаемые запасы).')}
+      ${panel(`Финансовые итоги ${f.fin.period}`, '', hbars(f.fin.rows.map(r => ({ label: esc(r.l), bars: [{ v: r.u === 'млн $' ? r.v / 1000 : r.v, color: r.sub || /КМГ/.test(r.l) ? 'var(--c3)' : FC(k), text: `${fmt(r.v, r.v < 10 ? 2 : 1)} ${r.u}` }] }))), f.fin.rows.some(r => r.n) ? f.fin.rows.filter(r => r.n).map(r => `${r.l} — ${r.n}.`).join(' ') : '')}
+    </div></div>`;
+    return `<section>${html}${srcNote(OV().src)}</section>`;
+  }
+};
 
 /* ============================================================
    ГЕОЛОГИЯ
@@ -1134,7 +1224,7 @@ function entrance(root) {
   const blocks = [];
   const add = (el, d) => { el.classList.add('fx-rise', 'rv'); el.style.setProperty('--d', d + 'ms'); blocks.push(el); };
   $$('section', root).forEach(sec => [...sec.children].forEach(ch => {
-    if (ch.matches('.grid2, .ops, .proj')) [...ch.children].forEach((x, j) => add(x, j * 90)); else add(ch, 0);
+    if (ch.matches('.grid2, .ops, .proj, .ov-grid')) [...ch.children].forEach((x, j) => add(x, j * 90)); else add(ch, 0);
   }));
   const run = el => { el.classList.add('seen'); $$('.kpi .v, .cu, .hb-v, .dn-leg .v, .dn-leg .p, .dn-v', el).forEach(x => countUp(x)); };
   if (revealIO) revealIO.disconnect();
@@ -2009,7 +2099,7 @@ function refPanel(sec, k) {
 /* ============================================================
    Выгрузка справки: PDF (печать) и PowerPoint (редактируемые таблицы и диаграммы)
    ============================================================ */
-const EXP_SECTIONS = [['geo', 'Геология'], ['prod', 'Добыча'], ['mk', 'Маркетинг'], ['en', 'Энергетика'], ['eco', 'Экология'], ['rel', 'Надёжность'], ['lc', 'Местное содержание'], ['econ', 'Экономика'], ['proj', 'Проекты']];
+const EXP_SECTIONS = [['ov', 'Общие данные'], ['geo', 'Геология'], ['prod', 'Добыча'], ['mk', 'Маркетинг'], ['en', 'Энергетика'], ['eco', 'Экология'], ['rel', 'Надёжность'], ['lc', 'Местное содержание'], ['econ', 'Экономика'], ['proj', 'Проекты']];
 const FIELD_HEX = { Y: '0D3B66', X: '2C7BB6', Z: '6FB1DC', D: '8A9BB0' };
 const asofText = () => { const l = LAST_COMMON(); return `${MNF[+l.slice(5) - 1]} ${l.slice(0, 4)}`; };
 
@@ -2119,6 +2209,23 @@ async function exportPPTX(secs) {
   const ref = (k, sec) => DATA.refs && DATA.refs[k] && DATA.refs[k][sec];
   const refTitle = t => { const x = t.replace('Справочно: ', ''); return x[0].toUpperCase() + x.slice(1); };
   for (const t of secs) {
+    if (t === 'ov' && DATA.overview) {
+      const K = FIELDS.filter(k => ovF(k)), nm = K.map(FS);
+      const L = (f, i) => f[i] ? `${f[i].l}: ${ovNum(f[i].v).replace(/<[^>]+>/g, '')} ${f[i].u}` : '—';
+      const sl = tSlide('Общие данные по месторождениям', `данные на ${OV().asof}`);
+      const rowsA = [
+        ['Контракт', ...K.map(k => { const c = ovF(k).contract; return `${c.type}, ${c.from}–${c.to} гг.`; })],
+        ['Накопленная добыча', ...K.map(k => ovF(k).cum.map((_, i) => L(ovF(k).cum, i)).join('\n'))],
+        ['Запасы (геол. / ост. извл.)', ...K.map(k => { const r = ovF(k).res; return r.rows.map(x => `${x.l}: ${ovNum(x.geo)} / ${x.rec == null ? '—' : ovNum(x.rec)} ${x.u}`).join('\n') + (r.extra ? `\n${r.extra.l}: ${ovNum(r.extra.v)} ${r.extra.u}` : ''); })],
+        ['Текущая добыча', ...K.map(k => ovF(k).cur.map((_, i) => L(ovF(k).cur, i)).join('\n'))]];
+      tbl(sl, ['Показатель', ...nm], rowsA, { colW: [2.33, 2.5, 2.5, 2.5, 2.5], fs: 10, left: true });
+      const s2 = tSlide('Общие данные: объекты, экспорт, финансы', `данные на ${OV().asof}`);
+      const rowsB = [
+        ['Производственные объекты', ...K.map(k => { const f = ovF(k).fac; return (f.n ? f.n + '\n' : '') + f.rows.map(r => `${r.l} — ${r.v}`).join('\n'); })],
+        ['Экспортные маршруты', ...K.map(k => ovF(k).exp.map(r => r.v ? `${r.l} — ${r.v}` : r.l).join('\n'))],
+        ['Финансовые итоги', ...K.map(k => { const f = ovF(k).fin; return f.period + ':\n' + f.rows.map(r => `${r.l} — ${ovNum(r.v)} ${r.u}`).join('\n'); })]];
+      tbl(s2, ['Показатель', ...nm], rowsB, { colW: [2.33, 2.5, 2.5, 2.5, 2.5], fs: 10, left: true });
+    }
     if (t === 'prod') {
       const st = FIELDS.map(k => prodStats(k, 'oil', LAST_COMMON())), n = st[0].months;
       const rows = FIELDS.map((k, i) => [names[i], fmt(st[i].fYTD, 0), fmt(st[i].pYTD, 0), P(st[i].ratio), fmt(st[i].plan26, 0), fmt(st[i].fact25, 0)]);
