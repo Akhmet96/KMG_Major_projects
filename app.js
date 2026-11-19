@@ -303,7 +303,7 @@ function seg(id, opts, cur, cls = 'sm') {
   return `<div class="seg ${cls}" role="group" data-seg="${id}">${opts.map(o => `<button type="button" data-v="${esc(o.v)}" aria-pressed="${o.v === cur}">${o.dot ? `<span class="dot" style="background:${o.dot}"></span>` : ''}${esc(o.t)}</button>`).join('')}</div>`;
 }
 function secHead(t, p, right) { t = NM(t); p = NM(p); return `<div class="sec-head"><div><h2>${t}</h2>${p ? `<p>${p}</p>` : ''}</div>${right || ''}</div>`; }
-function srcNote(t) { return `<div class="src">Источник: ${NM(t)}</div>`; }
+function srcNote(t) { return ''; }
 
 /* ============================================================
    State
@@ -455,7 +455,7 @@ RENDER.ov = {
       { l: 'До окончания контракта', v: ovYears(ovLeft(k)), s: `${c.type}, ${c.from}–${c.to} гг.` }]);
     html += panel('Срок контракта', '', ovTimeline([k]));
     html += `<div class="grid2">${ovCard(k, true)}<div class="stack">
-      ${panel('Отобрано от начальных извлекаемых запасов', '%', ovRings([k]), ({ X: 'Остаточные извлекаемые запасы — по категории С1.', Z: 'Накопленная добыча — жидкие углеводороды, запасы — конденсат.', D: 'Остаточные извлекаемые запасы — 20 млн т по справке.' })[k] || 'Накопленная добыча / (накопленная добыча + остаточные извлекаемые запасы).')}
+      ${panel('Отобрано от начальных извлекаемых запасов', '%', ovRings([k]), ({ X: 'Остаточные извлекаемые запасы — по категории С1.', Z: 'Накопленная добыча — жидкие углеводороды, запасы — конденсат.', D: 'Остаточные извлекаемые запасы — 20 млн т.' })[k] || 'Накопленная добыча / (накопленная добыча + остаточные извлекаемые запасы).')}
       ${panel(`Финансовые итоги ${f.fin.period}`, '', hbars(f.fin.rows.map(r => ({ label: esc(r.l), bars: [{ v: r.u === 'млн $' ? r.v / 1000 : r.v, color: r.sub || /КМГ/.test(r.l) ? 'var(--c3)' : FC(k), text: `${fmt(r.v, r.v < 10 ? 2 : 1)} ${r.u}` }] }))), f.fin.rows.some(r => r.n) ? f.fin.rows.filter(r => r.n).map(r => `${r.l} — ${r.n}.`).join(' ') : '')}
     </div></div>`;
     return `<section>${html}${srcNote(OV().src)}</section>`;
@@ -527,7 +527,7 @@ RENDER.geo = {
     else if (objs.some(o => o.kin0 != null)) {
       const kk = objs.filter(o => o.kin0 != null);
       gasChart = panel('Коэффициент извлечения нефти', 'д. ед.', hbLegend([{ name: 'КИН начальный', color: 'var(--c7)' }, { name: 'КИН текущий', color: FC(k) }]) +
-        hbars(kk.map(o => ({ label: lab(o), bars: [{ v: o.kin0, color: 'var(--c7)', text: fmtF(o.kin0, 3) }, { v: o.kin, color: FC(k), text: o.kin == null ? '—' : fmtF(o.kin, 3) }] }))), 'Текущий КИН показан там, где он есть в источнике.');
+        hbars(kk.map(o => ({ label: lab(o), bars: [{ v: o.kin0, color: 'var(--c7)', text: fmtF(o.kin0, 3) }, { v: o.kin, color: FC(k), text: o.kin == null ? '—' : fmtF(o.kin, 3) }] }))), 'Текущий КИН показан там, где он известен.');
     }
     // table
     const detail = g.detail || g.objects;
@@ -595,7 +595,7 @@ RENDER.geo = {
     const kin = table([{ t: 'Месторождение' }, { t: 'Категория' }, { t: 'Геол. запасы нефти, млн т', v: true }, { t: 'Извл. запасы нефти, млн т', v: true }, { t: 'Доля извлекаемых', v: true }, { t: 'КИН нач.', v: true }, { t: 'КИН тек.', v: true }, { t: 'Извл. запасы газа, млрд м³', v: true }],
       T.map(x => ({ cells: [`<button class="op-name" style="all:unset;cursor:pointer;font-weight:600" data-goto="${x.k}"><span class="dot" style="background:${FC(x.k)};margin-right:6px"></span>${FN(x.k)}</button>`, esc(x.t.cat), fmt(x.t.geoOil, 1), fmt(x.t.recOil, 1), pct(x.t.recOil / x.t.geoOil, 0), x.t.kin0 == null ? null : fmtF(x.t.kin0, 3), x.t.kin == null ? null : fmtF(x.t.kin, 3), x.t.recGas == null ? null : fmt(x.t.recGas, 1)] })));
     return `<section>${secHead('Геология · все месторождения', `Сравнение запасов по основной категории. По Y — основной участок, без участка «${KOR()}». Нажмите на месторождение, чтобы открыть подробности.`)}${ks}
-      <div class="grid2">${panel('Запасы нефти', 'млн т', bar)}${panel('Запасы газа', 'млрд м³', hbLegend([{ name: 'Геологические', color: 'var(--c8)' }, { name: 'Извлекаемые', color: 'var(--c7)' }]) + gas, 'У месторождения D запасы газа в источнике не приведены.')}</div>
+      <div class="grid2">${panel('Запасы нефти', 'млн т', bar)}${panel('Запасы газа', 'млрд м³', hbLegend([{ name: 'Геологические', color: 'var(--c8)' }, { name: 'Извлекаемые', color: 'var(--c7)' }]) + gas, 'По месторождению D данных о запасах газа нет.')}</div>
       <h3 class="sub-h">Сводка по месторождениям</h3>${kin}${EXTRA.geoAll()}${srcNote('листы «Геология» каждой книги.')}</section>`;
   }
 };
@@ -631,8 +631,9 @@ RENDER.prod = {
       { l: `${s.name}: факт 2025 года`, v: fmt(st.fact25), u: s.unit, s: st.plan25 ? `план 2025 — ${fmt(st.plan25)} ${s.unit}` : '' },
     ]);
     // annual chart
-    const aKey = sub('prodAnn', 'oil');
-    const A = p.annual[aKey];
+    const fam = kk => kk === 'oil' ? 'oil' : /м³/.test(p.mon[kk].unit) ? 'gas' : 'other';
+    const aKey = fam(key) === 'other' ? null : fam(key);
+    const A = p.annual[aKey || 'oil'];
     const years = Object.keys(A).filter(y => A[y] != null).sort();
     const ann26 = sum(p.mon[aKey === 'oil' ? 'oil' : 'agas'].plan.slice(12)) / 1000;
     const aUnit = aKey === 'oil' ? 'млн т' : 'млрд м³';
@@ -656,15 +657,15 @@ RENDER.prod = {
       tipExtra: i => (fact[i] != null && plan[i]) ? `<div class="r"><span>Выполнение</span><span>${pct(fact[i] / plan[i])}</span></div>` : ''
     });
     // product YTD table
-    const rows = keys.map(kk => {
+    const rows = keys.filter(kk => fam(kk) === fam(key)).map(kk => {
       const q = prodStats(k, kk), u = p.mon[kk];
       return { cells: [esc(u.name), esc(u.unit), fmt(q.pYTD), fmt(q.fYTD), (q.fYTD - q.pYTD >= 0 ? '+' : '') + fmt(q.fYTD - q.pYTD), q.ratio == null ? null : pill(q.ratio), fmt(q.plan26), fmt(q.fact25)] };
     });
     let html = secHead(`Добыча · ${FN(k)}`, `Помесячный план-факт ${yearsAv.length > 2 ? `${yearsAv[yearsAv.length - 1]}–2026` : '2025–2026'} и многолетняя динамика. Последний месяц с фактом — ${mLong(p.last)}.`,
       seg('prodKey' + k, keys.map(kk => ({ v: kk, t: p.mon[kk].name })), key, '')) + ks +
       `<div class="grid2">${panel(`${s.name} по месяцам, ${yr}`, s.unit, monChart, '', (yearsAv.length > 2 ? ysel('prodYear', yearsAv, yr) : seg('prodYear', [{ v: '2025', t: '2025' }, { v: '2026', t: '2026' }], yr)))}
-       ${panel('Добыча по годам', aUnit, annChart, `2026 — годовой план. ${p.annualSrc}`, seg('prodAnn', [{ v: 'oil', t: 'Нефть' }, { v: 'gas', t: 'Газ' }], aKey))}</div>
-       ${EXTRA.prodField(k, key, st)}<h3 class="sub-h">План-факт по продуктам, ${ytdLabel(st.months)}</h3>` +
+       ${(aKey ? panel(aKey === 'oil' ? `${p.mon.oil.name} по годам` : 'Газ по годам', aUnit, annChart, '2026 — годовой план.') : '')}</div>
+       ${EXTRA.prodField(k, key, st)}<h3 class="sub-h">${fam(key) === 'oil' ? `${p.mon.oil.name}: план-факт` : fam(key) === 'gas' ? 'Газ: план-факт по продуктам' : 'План-факт по продуктам'}, ${ytdLabel(st.months)}</h3>` +
       table([{ t: 'Продукт' }, { t: 'Ед. изм.' }, { t: 'План', v: true }, { t: 'Факт', v: true }, { t: 'Откл.', v: true }, { t: 'Выполнение', v: true }, { t: 'План 2026', v: true }, { t: 'Факт 2025', v: true }], rows);
     if (p.summary) html += `<h3 class="sub-h">${p.summary.title}</h3>` + table(p.summary.cols.map((c, i) => ({ t: c, v: i >= 2 && i <= 7 })),
       p.summary.rows.map(r => ({ cells: [esc(r[0]), esc(r[1]), fmt(r[2], 2), fmt(r[3], 2), fmt(r[4], 2), (r[5] >= 0 ? '+' : '') + fmt(r[5], 3), fmt(r[6], 2), (r[7] >= 0 ? '+' : '') + fmt(r[7], 3), `<span class="txt">${esc(r[8])}</span>`] })));
@@ -746,7 +747,7 @@ RENDER.mk = {
     const volChart = chartBox({ title: 'Объём реализации', cats: MONTHS26, series, xFmt: c => MN[+c.slice(5) - 1], tipTitle: c => mLong(c) });
     let priceChart = '';
     const pd = pr.dirs.filter(d => d.price && d.price.some(v => v));
-    if (!pd.length && pr.avgPrice) priceChart = panel('Средняя цена реализации', pr.priceUnit, chartBox({ title: 'Цена', cats: MONTHS26, series: [{ name: 'Средняя цена', color: FC(k), kind: 'line', values: fact(pr.avgPrice).map(v => v || null), unit: pr.priceUnit }], zero: false, xFmt: c => MN[+c.slice(5) - 1], tipTitle: c => mLong(c) }), 'Цена в книге указана общая по всем направлениям.');
+    if (!pd.length && pr.avgPrice) priceChart = panel('Средняя цена реализации', pr.priceUnit, chartBox({ title: 'Цена', cats: MONTHS26, series: [{ name: 'Средняя цена', color: FC(k), kind: 'line', values: fact(pr.avgPrice).map(v => v || null), unit: pr.priceUnit }], zero: false, xFmt: c => MN[+c.slice(5) - 1], tipTitle: c => mLong(c) }), 'Цена указана общая по всем направлениям.');
     else if (pd.length) priceChart = panel('Цена реализации', pr.priceUnit, chartBox({
       title: 'Цена', cats: MONTHS26, series: pd.map((d, j) => ({ name: d.name, color: pd.length > 1 ? PAL[pr.dirs.indexOf(d)] : FC(k), kind: 'line', values: fact(d.price).map(v => v || null), unit: pr.priceUnit })),
       zero: false, xFmt: c => MN[+c.slice(5) - 1], tipTitle: c => mLong(c)
@@ -754,7 +755,7 @@ RENDER.mk = {
     else priceChart = panel('Выполнение плана по месяцам', '%', chartBox({
       title: 'Выполнение', cats: MONTHS26, series: [{ name: 'Факт / план', color: FC(k), kind: 'line', values: MONTHS26.map((_, i) => { const f = sum(pr.dirs.map(d => d.fact[i])), p = sum(pr.dirs.map(d => d.plan[i])); return i <= st.li && p ? f / p * 100 : null; }) }],
       zero: false, refs: [{ v: 100, label: '100%' }], yFmt: v => fmt(v) + '%', tipFmt: v => fmtF(v, 1) + '%', xFmt: c => MN[+c.slice(5) - 1], tipTitle: c => mLong(c)
-    }), 'Цена реализации в источнике для этого продукта не указана.');
+    }), 'Цена реализации для этого продукта не указана.');
     const dirTbl = table([{ t: 'Направление' }, { t: 'План', v: true }, { t: 'Факт', v: true }, { t: 'Откл.', v: true }, { t: 'Выполнение', v: true }].concat(pd.length || pr.avgPrice ? [{ t: `Ср. цена, ${pr.priceUnit}`, v: true }] : []),
       st.dirs.map(d => ({ cells: [esc(d.name), fmt(d.p), fmt(d.f), (d.f - d.p >= 0 ? '+' : '') + fmt(d.f - d.p), d.p ? pill(d.r) : '<span class="pill neutral">без плана</span>'].concat(pd.length || pr.avgPrice ? [d.price == null ? null : fmt(d.price, 1)] : []) }))
         .concat(multi ? [{ cls: 'tot', cells: ['Итого', fmt(st.p), fmt(st.f), (st.f - st.p >= 0 ? '+' : '') + fmt(st.f - st.p), pill(st.r)].concat(pd.length || pr.avgPrice ? [st.price == null ? null : fmt(st.price, 1)] : []) }] : []));
@@ -803,7 +804,7 @@ RENDER.mk = {
     const ktkTot = hbars(kv.map(k => { const v = sum(DATA.mk[k].products[0].dirs.find(d => d.name === 'КТК').fact.slice(0, MONTHS26.indexOf(LAST_COMMON()) + 1).map(x => x || 0)); return { label: `<span class="dot" style="background:${FC(k)};margin-right:6px"></span>${FS(k)}`, bars: [{ v, color: FC(k), text: fmt(v) + ' тыс. т' }] }; }));
     const exec = hbars(S2.map(({ k, st }) => ({ label: `<span class="dot" style="background:${FC(k)};margin-right:6px"></span>${FS(k)}`, bars: [{ v: st.r, color: FC(k), text: pct(st.r) }] })), { max: Math.max(1.2, ...S2.map(x => x.st.r)) });
     return `<section>${secHead('Маркетинг · все месторождения', 'Реализация нефти в 2026 году: выполнение плана и цены. Остальные продукты — во вкладке каждого месторождения.')}<div class="ops">${cards}</div>
-      <div class="grid2">${panel('Цена реализации через КТК', '$/барр.', ktkChart, 'Y в сравнение не входит: его цена в источнике указана в $/т без разбивки по направлениям.')}${panel('Выполнение плана реализации нефти', `факт / план, ${ytdLabel(S2[0].st.li + 1)}`, exec)}</div>
+      <div class="grid2">${panel('Цена реализации через КТК', '$/барр.', ktkChart, 'Y в сравнение не входит: его цена указана в $/т без разбивки по направлениям.')}${panel('Выполнение плана реализации нефти', `факт / план, ${ytdLabel(S2[0].st.li + 1)}`, exec)}</div>
       <div class="grid2">${panel('Реализация нефти через КТК по месяцам', 'тыс. т', ktkVol, 'Факт по месяцам 2026 года, все проекты.')}${panel('Через КТК с начала года', 'тыс. т', ktkTot, `Сумма за ${ytdLabel(MONTHS26.indexOf(LAST_COMMON()) + 1)}.`)}</div>
       ${EXTRA.mkAll()}${srcNote('листы «маркетинг» каждой книги.')}</section>`;
   }
@@ -844,7 +845,7 @@ RENDER.en = {
       ${panel('Потребление электроэнергии', 'МВт', chartBox({
         title: 'Потребление', cats: yrs,
         series: [{ name: 'Потребление', color: 'var(--c7)', values: e.annual.map(a => a.cons), unit: 'МВт' }]
-      }), 'В источнике единица указана как «МВт/ч». Потребление совпадает с выработкой во все годы: месторождение потребляет всю собственную генерацию.')}</div>
+      }), 'Потребление совпадает с выработкой во все годы: месторождение потребляет всю собственную генерацию.')}</div>
       <h3 class="sub-h">Газотурбинные генераторы</h3>${table([{ t: 'ГТГ' }, { t: 'Тип' }, { t: 'Уст. мощность, МВт', v: true }], e.units.map(u => ({ cells: [esc(u.name), esc(u.type), fmt(u.cap, 1)] })).concat([{ cls: 'tot', cells: ['Итого', '', fmt(cap, 1)] }]))}`;
     }
     if (k === 'X') {
@@ -857,7 +858,7 @@ RENDER.en = {
         title: 'Генерация', cats: lab,
         series: [{ name: 'Установленная', color: 'var(--c8)', hatch: true, values: e.gen.map(u => u.cap), unit: 'МВт' }, { name: 'Факт, зима', color: FC(k), values: e.gen.map(u => u.winter), unit: 'МВт' }, { name: 'Факт, лето', color: 'var(--c1)', values: e.gen.map(u => u.summer), unit: 'МВт' }],
         tipTitle: (c, i) => `${e.gen[i].site} · ${c}`
-      }), 'Пустые значения — агрегат в этом сезоне не работал (по данным источника).')}
+      }), 'Пустые значения — агрегат в этом сезоне не работал.')}
       ${panel('Потребители', 'уст. мощность, МВт', ['Наземная часть', 'Морская часть'].map(site => `<p class="eyebrow" style="margin:6px 0 8px">${site}</p>` + hbars(e.cons.filter(c => c.site === site).sort((a, b) => (b.cap || 0) - (a.cap || 0)).map(c => ({ label: esc(c.name), bars: [{ v: c.cap, color: FC(k), text: c.cap == null ? '—' : fmt(c.cap, 2) }] })), { max: Math.max(...e.cons.map(c => c.cap || 0)) })).join('<div style="height:12px"></div>'))}</div>
       <h3 class="sub-h">Генерация по агрегатам</h3>` + table([{ t: 'Часть' }, { t: 'Агрегат' }, { t: 'Уст. мощность', v: true }, { t: 'Факт зима', v: true }, { t: 'Факт лето', v: true }, { t: 'Резервная мощность', v: true }],
         e.gen.map((u, i) => ({ cells: [esc(u.site), esc(lab[i]), fmt(u.cap, 2), u.winter == null ? null : fmt(u.winter, 2), u.summer == null ? null : fmt(u.summer, 2), fmt(u.reserve, 2)] })).concat([{ cls: 'tot', cells: ['Итого', '', fmt(cap, 1), fmt(w, 1), fmt(su, 1), ''] }]));
@@ -885,7 +886,7 @@ RENDER.en = {
         }))}</div>`;
       html += `<h3 class="sub-h">Турбогенераторы, ${mLong(e.lastMonth)}</h3>` + table([{ t: 'Объект' }, { t: 'Участок' }, { t: 'Агрегат' }, { t: 'Уст. мощность, МВт', v: true }, { t: 'Факт, МВт', v: true }, { t: 'Загрузка', v: true }],
         e.unitsLast.map(u => ({ cells: [esc(u.plant), esc(u.site), esc(u.name), fmt(u.cap, 2), fmt(u.fact, 1), pct(u.fact / u.cap, 0)] })));
-      html += `<p class="note">Лист «Энергетика 1» в книге ${FS('Y')} содержит ${e.rawRows} строк данных по агрегатам (остальные строки пустые) — они сведены по заводам и месяцам.</p>`;
+      html += `<p class="note">Данные по ${e.rawRows} агрегатам сведены по заводам и месяцам.</p>`;
     }
     if (k === 'Z') {
       const cap = sum(e.units.map(u => u.cap)), f = sum(e.units.map(u => u.fact));
@@ -904,7 +905,7 @@ RENDER.en = {
         title: 'Выработка', series: genIdx.map((i, j) => ({ name: C[i], color: PAL[j], values: R.map(r => r.v[i]), unit: 'МВт', stack: 's' })),
         refs: [{ v: cap, label: `Установленная ${fmt(cap, 0)} МВт` }], yMax: cap * 1.08,
         tipExtra: i => `<div class="r"><span>Всего</span><span>${fmt(G[i], 1)} МВт</span></div>`
-      })), 'Данные в источнике есть за январь–апрель 2023.')}
+      })), 'Данные есть за январь–апрель 2023.')}
       ${panel('Газотурбинные генераторы: мощность', 'МВт', chartBox({
           title: 'ГТГ', cats: e.units.map(u => u.name),
           series: [{ name: 'Установленная', color: 'var(--c8)', hatch: true, values: e.units.map(u => u.cap), unit: 'МВт' }, { name: 'Фактическая', color: FC(k), values: e.units.map(u => u.fact), unit: 'МВт' }],
@@ -920,7 +921,7 @@ RENDER.en = {
         })), 'Поставки внешним потребителям.')}</div>
       <h3 class="sub-h">Баланс по месяцам</h3>${table([{ t: 'Месяц' }, { t: 'Выработка', v: true }, { t: 'Потребление', v: true }, { t: 'Экспорт', v: true }, { t: 'Выработка − (потребление + экспорт)', v: true }],
         R.map((r, i) => ({ cells: [mLong(r.m), fmt(G[i], 1), fmt(U[i], 1), fmt(X[i], 1), fmt(Math.abs(G[i] - U[i] - X[i]) < 0.05 ? 0 : G[i] - U[i] - X[i], 1)] })))}
-      <p class="note">МВт. В январе–феврале выработка полностью распределена между потреблением и экспортом. В марте–апреле около 15–16 МВт выработки в исходных листах не отнесены ни к потреблению, ни к экспорту.</p>`;
+      <p class="note">МВт. В январе–феврале выработка полностью распределена между потреблением и экспортом. В марте–апреле около 15–16 МВт выработки не отнесены ни к потреблению, ни к экспорту.</p>`;
     }
     const src = { D: 'книга D, листы «Энергетика», «Энергетика 1».', X: 'книга X, листы «Генерация», «Потребление».', Y: 'книга Y, листы «Энергетика», «Энергетика 1».', Z: 'книга Z, листы «Энергетика» (выработка), «Потребление 2», «Экспорт 3», «Энергетика 1».' }[k];
     return `<section>${secHead(`Энергетика · ${FN(k)}`, 'Генерация (выработка) и потребление электроэнергии показаны раздельно.')}${html}${srcNote(src)}</section>`;
@@ -929,7 +930,7 @@ RENDER.en = {
     const E = FIELDS.map(k => ({ k, ...enSummary(k) }));
     const rows = E.map(x => ({ label: `<span class="dot" style="background:${FC(x.k)};margin-right:6px"></span>${FS(x.k)}`, bars: [{ v: x.cap, color: 'var(--c8)', text: fmt(x.cap, 0) + ' МВт' }, { v: x.out, color: FC(x.k), text: fmt(x.out, 0) + ' МВт' }] }));
     const load = hbars(E.map(x => ({ label: `<span class="dot" style="background:${FC(x.k)};margin-right:6px"></span>${FS(x.k)} <span class="txt" style="display:inline">(${esc(x.label)})</span>`, bars: [{ v: x.out / x.cap, color: FC(x.k), text: pct(x.out / x.cap, 0) }] })), { max: 1 });
-    return `<section>${secHead('Энергетика · все месторождения', 'Установленная и фактическая мощность собственной генерации. Периоды в источниках разные — они указаны в подписях.')}
+    return `<section>${secHead('Энергетика · все месторождения', 'Установленная и фактическая мощность собственной генерации. Периоды данных разные — они указаны в подписях.')}
       ${kpis([{ l: 'Установленная мощность, всего', v: fmt(sum(E.map(x => x.cap)), 0), u: 'МВт', s: 'четыре месторождения' }, { l: 'Фактическая мощность, всего', v: fmt(sum(E.map(x => x.out)), 0), u: 'МВт', s: 'по последним доступным данным' }])}
       <div class="grid2">${panel('Установленная и фактическая мощность', 'МВт', hbLegend([{ name: 'Установленная', color: 'var(--c8)' }, { name: 'Фактическая', color: 'var(--c7)' }]) + hbars(rows))}
       ${panel('Загрузка генерации', 'факт / установленная', load, 'D — среднегодовая генерация 2026; X — зимний режим; Y — последний месяц; Z — фактическая мощность ГТГ.')}</div>
@@ -968,7 +969,7 @@ RENDER.eco = {
     const lastY = ys[ys.length - 1], prevY = ys[ys.length - 2];
     const qShare = y => { const o = Y[y]; if (!o || !o.q) return null; const q = o.qAnnual || k === 'D' ? o.q * (o.n / 12) : o.q; return o.t / q; };
     const ks = [];
-    if (prevY) ks.push({ l: `Выбросы ПГ, ${prevY}`, v: fmt(Y[prevY].t, 1), u: unit, s: qShare(prevY) != null ? `${pct(qShare(prevY), 0)} от квоты` : 'квота в источнике не указана' });
+    if (prevY) ks.push({ l: `Выбросы ПГ, ${prevY}`, v: fmt(Y[prevY].t, 1), u: unit, s: qShare(prevY) != null ? `${pct(qShare(prevY), 0)} от квоты` : 'квота не указана' });
     ks.push({ l: `Выбросы ПГ, ${lastY}${Y[lastY].n < 12 ? ` (${Y[lastY].n} мес.)` : ''}`, v: fmt(Y[lastY].t, 1), u: unit, s: qShare(lastY) != null ? `${pct(qShare(lastY), 0)} от квоты за тот же период` : '' });
     const anyQ = ys.filter(y => Y[y].q).pop();
     if (anyQ) ks.push({ l: `Квота выбросов, ${anyQ}`, v: fmt(Y[anyQ].qAnnual || k === 'D' ? Y[anyQ].q : Y[anyQ].q / Y[anyQ].n * 12, 1), u: unit, s: 'годовая' });
@@ -985,12 +986,12 @@ RENDER.eco = {
       html += `<div class="grid2">${panel(e.kind === 'quarter' ? 'Выбросы по источникам, поквартально' : 'Выбросы по источникам, помесячно', 'тыс. т CO₂-экв.', chartBox({
         title: 'Выбросы', cats, series, xFmt: lbl, tipTitle: c => e.kind === 'quarter' ? lbl(c) : mLong(c),
         tipExtra: i => `<div class="r"><span>Итого</span><span>${fmt(rows[i].total, 1)} тыс. т</span></div>`
-      }), k === 'D' ? 'Данных за II–III кв. 2026 в источнике пока нет.' : '', e.kind === 'month' ? seg('ecoRange' + k, [{ v: 'recent', t: '2025–2026' }, { v: 'all', t: 'Вся история' }], range) : '')}
+      }), k === 'D' ? 'Данных за II–III кв. 2026 пока нет.' : '', e.kind === 'month' ? seg('ecoRange' + k, [{ v: 'recent', t: '2025–2026' }, { v: 'all', t: 'Вся история' }], range) : '')}
       ${panel('Выбросы и квота по годам', 'тыс. т CO₂-экв.', chartBox({
           title: 'По годам', cats: ys,
           series: [{ name: 'Выбросы', color: FC(k), values: ys.map(y => Y[y].t), unit: 'тыс. т' }, { name: 'Квота', color: 'var(--bad)', hatch: true, values: ys.map(y => Y[y].q || null), unit: 'тыс. т' }],
           xFmt: y => Y[y].n < 12 ? `${y}*` : y, tipTitle: y => Y[y].n < 12 ? `${y} (${Y[y].n} мес.)` : y
-        }), `* неполный год. ${k === 'D' ? 'Для D квота задана на год: 2024 и 2026 — из источника, 2025 — по справке (68 341 т); 2024 — годовой итог из источника.' : 'Квота — сумма месячных квот за те же месяцы.'}`)}</div>`;
+        }), `* неполный год. ${k === 'D' ? 'Для D квота задана на год (2025 — 68 341 т); 2024 — годовой итог.' : 'Квота — сумма месячных квот за те же месяцы.'}`)}</div>`;
       html += `<h3 class="sub-h">Данные по периодам</h3>` + table([{ t: 'Период' }].concat(e.sources.map(s => ({ t: esc(s.replace(/^ПГ на долю /, '').replace(/^./, c => c.toUpperCase())), v: true }))).concat([{ t: 'Итого', v: true }, { t: 'Квота', v: true }]),
         (k === 'D' ? e.rows.filter(r => r.total) : e.rows.filter(r => r.total)).slice().reverse().map(r => ({ cells: [k === 'D' ? (r.d === '2024-12-31' ? '2024 (год)' : `${Math.ceil(+r.d.slice(5, 7) / 3)} кв. ${r.d.slice(0, 4)}`) : mLong(r.d)].concat(r.v.map(v => fmt(v, 2))).concat([`<b>${fmt(r.total, 1)}</b>`, r.quota == null ? null : fmt(r.quota, 1)]) })), { max: 420 });
     }
@@ -1001,7 +1002,7 @@ RENDER.eco = {
         title: 'ПГ', cats,
         series: [{ name: 'Факт', color: FC(k), values: A.map(a => a[1]).concat(F.map(() => null)), unit: 'тыс. т' }, { name: 'Прогноз выбросов', color: FC(k), hatch: true, values: A.map(() => null).concat(F.map(f => f[2])), unit: 'тыс. т', stack: 'Факт' },
         { name: 'НПР (квота)', color: 'var(--bad)', kind: 'line', dash: true, values: A.map(() => null).concat(F.map(f => f[1])), unit: 'тыс. т' }]
-      }), 'НПР — национальный план распределения квот. В источнике единица факта указана как «MM CO2t».')}
+      }), 'НПР — национальный план распределения квот.')}
       ${panel('Выбросы по источникам', 'тыс. т CO₂-экв.', chartBox({
           title: 'По источникам', cats: e.bySource.map(r => r.label),
           series: e.sources.map((s, j) => ({ name: s, color: PAL[j], values: e.bySource.map(r => r.v[j]), unit: 'тыс. т', stack: 's' })).concat([{ name: 'Квота', color: 'var(--bad)', hatch: true, values: e.bySource.map(r => r.quota), unit: 'тыс. т', stack: 'q' }]),
@@ -1022,7 +1023,7 @@ RENDER.eco = {
     const tbl = table([{ t: 'Месторождение' }, { t: 'Выбросы 2024', v: true }, { t: 'Квота 2024', v: true }, { t: 'Выбросы 2025', v: true }, { t: 'Квота 2025', v: true }, { t: '2025 к квоте', v: true }],
       FIELDS.map(k => { const a = Y[k]['2024'], b = Y[k]['2025']; return { cells: [`<button style="all:unset;cursor:pointer;font-weight:600" data-goto="${k}"><span class="dot" style="background:${FC(k)};margin-right:6px"></span>${FN(k)}</button>`, a ? fmt(a.t, 1) : null, a && a.q ? fmt(a.q, 1) : null, b ? fmt(b.t, 1) : null, b && b.q ? fmt(b.q, 1) : null, share(k, '2025') == null ? '<span class="pill neutral">нет квоты</span>' : pill(share(k, '2025'), false, pct(share(k, '2025'), 0))] }; }));
     return `<section>${secHead('Экология · все месторождения', 'Годовые выбросы парниковых газов и их отношение к квоте, тыс. т CO₂-экв.')}
-      <div class="grid2">${panel('Выбросы к квоте', '2024 — заштриховано, 2025 — сплошная', hbars(rows, { max: Math.max(1.2, ...FIELDS.flatMap(k => ys.map(y => share(k, y) || 0)))}), 'Больше 100% — превышение квоты. У D квота на 2025 год — по справке.')}
+      <div class="grid2">${panel('Выбросы к квоте', '2024 — заштриховано, 2025 — сплошная', hbars(rows, { max: Math.max(1.2, ...FIELDS.flatMap(k => ys.map(y => share(k, y) || 0)))}), 'Больше 100% — превышение квоты.')}
       ${panel('Объём выбросов', 'тыс. т CO₂-экв.', hbars(tot), 'Масштабы сильно различаются: Y выбрасывает в десятки раз больше остальных.')}</div>
       <h3 class="sub-h">Сводка</h3>${tbl}${EXTRA.ecoAll()}${srcNote('листы «Экология» каждой книги.')}</section>`;
   }
@@ -1048,7 +1049,7 @@ RENDER.rel = {
       { l: `Эффективность, факт 2026 (${y26.n} мес.)`, v: pct(y26.f), s: `план — ${pct(avg(r.pts.filter(p => p[0] >= '2026-01' && p[2] != null && !(p[1] > 1.05)).map(p => p[1])))}${r.pts.some(p => p[0] >= '2026-01' && p[1] > 1.05) ? ' · без месяца с планом >100%' : ''}` },
       { l: 'Эффективность, факт 2025', v: pct(y25.f), s: `план — ${pct(y25.p)}` },
       { l: 'Минимум за 2025–2026', v: pct(Math.min(...r.pts.filter(p => p[0] >= '2025' && p[2] != null).map(p => p[2]))), s: mLong(r.pts.filter(p => p[0] >= '2025' && p[2] != null).reduce((a, b) => b[2] < a[2] ? b : a)[0]) },
-      { l: 'События и комментарии', v: String(r.events.length), s: 'по данным источника' }]);
+      { l: 'События и комментарии', v: String(r.events.length), s: 'за весь период' }]);
     const chart = chartBox({
       title: 'Эффективность', cats: pts.map(p => p[0]),
       series: [{ name: 'План', color: 'var(--ink-2)', kind: 'line', dash: true, values: pts.map(p => p[1] == null ? null : p[1] * 100), dots: false }, { name: 'Факт', color: FC(k), kind: 'line', values: pts.map(p => p[2] == null ? null : p[2] * 100), dots: range === 'recent' }],
@@ -1064,7 +1065,7 @@ RENDER.rel = {
     });
     let html = secHead(`Надёжность · ${FN(k)}`, 'Эффективность работы производственных объектов: план и факт по месяцам, ключевые события.') + ks +
       `<div class="grid2">${panel('Эффективность по месяцам', '%', chart, 'Наведите на точку, чтобы увидеть событие месяца.', seg('relRange', [{ v: 'recent', t: '2024–2026' }, { v: 'all', t: 'С 2015' }], range))}
-      ${panel('Среднегодовая эффективность', '%', ann, 'До 2018 года в источнике по одному значению на год.')}</div>`;
+      ${panel('Среднегодовая эффективность', '%', ann, 'До 2018 года — по одному значению на год.')}</div>`;
     if (r.throughput) {
       const T = r.throughput.filter(t => t[0] >= '2024-01' && (t[3] || t[4]));
       html += `<div style="margin-top:16px">${panel('Суточная производительность', 'т/сут', chartBox({
@@ -1072,9 +1073,9 @@ RENDER.rel = {
         series: [{ name: 'План', color: 'var(--ink-2)', kind: 'line', dash: true, values: T.map(t => t[2]), dots: false, unit: 'т/сут' }, { name: 'Факт (макс.)', color: 'var(--c7)', kind: 'line', values: T.map(t => t[3]), unit: 'т/сут' }, { name: 'Факт (средн.)', color: FC(k), kind: 'line', values: T.map(t => t[4]), unit: 'т/сут' }],
         zero: false, xFmt: c => mLabel(c), tipTitle: c => mLong(c),
         tipExtra: i => `<div class="r"><span>План на месяц</span><span>${fmt(T[i][1])} т</span></div>`
-      }), 'Данные с 2024 года; полная история с 2019 — в исходном листе.')}</div>`;
+      }), 'Данные с 2024 года.')}</div>`;
     }
-    html += `<h3 class="sub-h">События</h3><div class="panel"><ul class="events">${r.events.slice().reverse().map(e => `<li><span class="when">${e.from === e.to ? mLong(e.from) : `${mLabel(e.from)} – ${mLabel(e.to)}`}</span><span>${esc(e.t)}</span></li>`).join('') || '<li><span></span><span class="txt">Событий в источнике нет.</span></li>'}</ul></div>`;
+    html += `<h3 class="sub-h">События</h3><div class="panel"><ul class="events">${r.events.slice().reverse().map(e => `<li><span class="when">${e.from === e.to ? mLong(e.from) : `${mLabel(e.from)} – ${mLabel(e.to)}`}</span><span>${esc(e.t)}</span></li>`).join('') || '<li><span></span><span class="txt">Событий нет.</span></li>'}</ul></div>`;
     const src = `книга ${k}, лист «Надежность».`;
     return `<section>${html}${srcNote(src)}</section>`;
   },
@@ -1129,7 +1130,7 @@ RENDER.lc = {
       series: [{ name: 'Затраты на МС', color: FC(k), values: dyn.map(d => d.ms), unit: 'млн $' }, { name: 'Доля МС в общих затратах', color: 'var(--ink-2)', kind: 'line', axis: 'right', values: dyn.map(d => d.share == null ? null : d.share * 100) }],
       rFmt: v => fmt(v) + '%', tipFmt: (v, s) => s.axis === 'right' ? fmtF(v, 1) + '%' : fmt(v, 1) + ' млн $', rZero: true
     });
-    html += `<div class="grid2">${panel('Доля МС в закупках ТРУ', '%', truChart, '')}${panel('Затраты на МС и их доля', 'млн $ · %', dynChart, k === 'Y' ? 'В источнике значения одинаковы за все годы (400 млн $ и 60%) — вероятно, это заглушка.' : '')}</div>`;
+    html += `<div class="grid2">${panel('Доля МС в закупках ТРУ', '%', truChart, '')}${panel('Затраты на МС и их доля', 'млн $ · %', dynChart, k === 'Y' ? 'Значения одинаковы за все годы (400 млн $ и 60%).' : '')}</div>`;
     // nationalization chart
     const nr = nat.rows.filter(r => r.slice(1).some(v => v != null && v !== 0));
     const countCols = nat.cols.map((c, i) => i + 1).filter(i => i !== natShareIdx && !/Руководство/.test(nat.cols[i - 1]));
@@ -1140,7 +1141,7 @@ RENDER.lc = {
     const natS = natSeries.filter(s => s.values.some(v => v != null));
     if (!natS.some(s => s.kind !== 'line')) natS.forEach(s => { s.axis = 'left'; });
     const natChart = chartBox({ title: 'Национализация', cats: nr.map(r => r[0]), series: natS, zero: natS.some(s => s.kind !== 'line'), yFmt: natS.some(s => s.kind !== 'line') ? undefined : v => fmt(v, 1) + '%', rFmt: v => fmt(v) + '%', tipFmt: (v, s) => s.kind === 'line' ? fmtF(v, 1) + '%' : fmt(v), rZero: false });
-    const natNote = { D: 'Количество позиций — штатные позиции; доля казахстанского персонала — правая шкала.', X: 'План и факт — количество национализированных позиций за год; доля — правая шкала.', Y: 'Численность персонала — столбцы; доли — правая шкала.', Z: 'Плановые и фактические значения национализации в источнике нулевые; показана только доля персонала.' }[k];
+    const natNote = { D: 'Количество позиций — штатные позиции; доля казахстанского персонала — правая шкала.', X: 'План и факт — количество национализированных позиций за год; доля — правая шкала.', Y: 'Численность персонала — столбцы; доли — правая шкала.', Z: 'Плановые и фактические значения национализации нулевые; показана только доля персонала.' }[k];
     const truTbl = table([{ t: 'Год' }, { t: 'Статус' }, { t: 'Категория' }, { t: 'Доля МС', v: true }, { t: 'Затраты на МС, млн $', v: true }, { t: 'Затраты всего, млн $', v: true }],
       tru.slice().sort((a, b) => b.y.localeCompare(a.y) || a.st.localeCompare(b.st) || CATS.indexOf(a.cat) - CATS.indexOf(b.cat)).map(t => ({ cells: [esc(t.y), t.st === 'План' ? '<span class="sc">план</span>' : 'факт', esc(t.cat), pct(t.share, 1), t.ms == null ? null : fmt(t.ms, 1), t.all == null ? null : fmt(t.all, 1)] })), { max: 380 });
     html += `<div class="grid2" style="margin-top:16px">${panel('Национализация персонала', '', natChart, natNote)}<div class="panel"><div class="chart-head"><h3>Закупки ТРУ: данные</h3></div>${truTbl}</div></div>`;
@@ -1156,7 +1157,7 @@ RENDER.lc = {
     const lastFact = k => { const f = DATA.lc.tru[k].filter(t => t.st === 'Факт'); const y = [...new Set(f.map(t => t.y))].sort().pop(); return { y, rows: f.filter(t => t.y === y) }; };
     const truRows = FIELDS.map(k => { const L = lastFact(k); return { label: `<span class="dot" style="background:${FC(k)};margin-right:6px"></span>${FS(k)} <span class="txt" style="display:inline">(${esc(L.y)})</span>`, bars: CATS.map(c => { const t = L.rows.find(x => x.cat === c); return { v: t ? t.share : null, color: CATC[c], text: t ? `${c.toLowerCase()} ${pct(t.share, 0)}` : '—' }; }) }; });
     return `<section>${secHead('Местное содержание · все месторождения', 'Доля МС в затратах, в закупках ТРУ и доля казахстанского персонала.')}
-      <div class="grid2">${panel('Доля МС в общих затратах', '%', share, '* 2026 — I–II кварталы. Y: в источнике одинаковое значение 60% за все годы.')}${panel('Доля казахстанского персонала', '%', nat, '* 2026 — I–II кварталы.')}</div>
+      <div class="grid2">${panel('Доля МС в общих затратах', '%', share, '* 2026 — I–II кварталы. Y: одинаковое значение 60% за все годы.')}${panel('Доля казахстанского персонала', '%', nat, '* 2026 — I–II кварталы.')}</div>
       <div style="margin-top:16px">${panel('Доля МС в закупках ТРУ, последний год с фактом', '%', hbLegend(CATS.map(c => ({ name: c, color: CATC[c] }))) + hbars(truRows, { max: 1 }))}</div>
       ${EXTRA.lcAll()}${srcNote('листы «ТРУ», «Динамика доли затрат», «Национализация» каждой книги.')}</section>`;
   }
@@ -1308,7 +1309,7 @@ function heatmap(o) {
     h += `<span class="hm-r">${r.label}</span>`;
     cols.forEach((c, ci) => {
       const x = o.cell(r, c);
-      if (!x) { h += `<span class="hm-c na" style="--i:${ci};--r:${ri}" data-tip="${esc(`<b>${FS(r.k)} · ${mLong(c.key)}</b>нет данных в источнике`)}"></span>`; return; }
+      if (!x) { h += `<span class="hm-c na" style="--i:${ci};--r:${ri}" data-tip="${esc(`<b>${FS(r.k)} · ${mLong(c.key)}</b>нет данных`)}"></span>`; return; }
       const a = x.d == null ? 0 : x.d >= 0 ? clamp(x.d / o.scale.pos, 0, 1) : clamp(-x.d / o.scale.neg, 0, 1);
       const bg = x.d == null ? 'var(--surface-2)' : `color-mix(in srgb,var(--${x.d >= 0 ? 'good' : 'bad'}) ${Math.round(8 + 37 * a)}%,var(--surface))`;
       h += `<span class="hm-c" style="--i:${ci};--r:${ri};background:${bg}" data-tip="${esc(x.tip)}">${x.t}</span>`;
@@ -1359,7 +1360,7 @@ function pfmap(o) {
     cols.forEach((c, ci) => {
       const x = o.cell(r, c);
       const cls = `hm-c pf-c${c.total ? ' ctot' : ''}${r.total ? ' rtot' : ''}`;
-      if (!x) { h += `<span class="${cls} na" style="--i:${ci};--r:${ri}" data-tip="${esc(`<b>${esc(r.name || r.k)} · ${c.total ? esc(c.label) : mLong(c.key)}</b>нет данных в источнике`)}"><small>нет данных</small></span>`; return; }
+      if (!x) { h += `<span class="${cls} na" style="--i:${ci};--r:${ri}" data-tip="${esc(`<b>${esc(r.name || r.k)} · ${c.total ? esc(c.label) : mLong(c.key)}</b>нет данных`)}"><small>нет данных</small></span>`; return; }
       h += `<span class="${cls} ${x.cls}" style="--i:${ci};--r:${ri}" data-tip="${esc(x.tip)}"><b>${x.main}</b>${x.sub ? `<small>${x.sub}</small>` : ''}</span>`;
     });
   });
@@ -1396,7 +1397,7 @@ function prodPF(year) {
   return pfmap({
     cols, rows, future: year === '2026', anomaly: true, minw: 76,
     cell: (r, c) => {
-      if (!r.total && !R0[r.k]) return { cls: 'na', main: '', sub: '', tip: `<b>${esc(r.name)} · ${year}</b>За этот год в источнике есть только годовые итоги` };
+      if (!r.total && !R0[r.k]) return { cls: 'na', main: '', sub: '', tip: `<b>${esc(r.name)} · ${year}</b>За этот год есть только годовые итоги` };
       if (c.total) {
         const pick = rr => rr.filter(x => x.f != null && !x.fut).slice(0, n);
         const parts = r.total ? FIELDS.map(k => pick(R0[k])) : [pick(R0[r.k])];
@@ -1458,9 +1459,9 @@ function relPF(year) {
         return { cls: pl ? pfBinD(f - pl) : 'an', main: pct(f, 0), sub: pl ? `план ${pct(pl, 0)}` : '', tip: head(c.label) + tipRow('Факт, среднее', pct(f)) + (pl ? tipRow('План, среднее', pct(pl)) : '') + tipRow('Месяцев с фактом', ps.length) };
       }
       const p = get(r.k, c.key);
-      if (!p) return c.key > last ? { cls: 'fut', main: '—', sub: '', tip: head(mLong(c.key)) + 'Плана и факта в источнике пока нет' } : null;
-      if (p[1] > 1.05) return { cls: 'an', main: '*', sub: p[2] != null ? `факт ${pct(p[2], 0)}` : '', tip: head(mLong(c.key)) + tipRow('План', pct(p[1])) + (p[2] != null ? tipRow('Факт', pct(p[2])) : '') + 'План выше 100% — похоже на ошибку в источнике, месяц не учитывается в среднем' };
-      if (c.key > last || p[2] == null) return p[1] ? { cls: 'fut', main: 'план', sub: pct(p[1], 0), tip: head(mLong(c.key)) + tipRow('План', pct(p[1])) + 'Факта пока нет' } : { cls: 'fut', main: '—', sub: '', tip: head(mLong(c.key)) + 'Плана и факта в источнике пока нет' };
+      if (!p) return c.key > last ? { cls: 'fut', main: '—', sub: '', tip: head(mLong(c.key)) + 'Плана и факта пока нет' } : null;
+      if (p[1] > 1.05) return { cls: 'an', main: '*', sub: p[2] != null ? `факт ${pct(p[2], 0)}` : '', tip: head(mLong(c.key)) + tipRow('План', pct(p[1])) + (p[2] != null ? tipRow('Факт', pct(p[2])) : '') + 'План выше 100% — похоже на ошибку в данных, месяц не учитывается в среднем' };
+      if (c.key > last || p[2] == null) return p[1] ? { cls: 'fut', main: 'план', sub: pct(p[1], 0), tip: head(mLong(c.key)) + tipRow('План', pct(p[1])) + 'Факта пока нет' } : { cls: 'fut', main: '—', sub: '', tip: head(mLong(c.key)) + 'Плана и факта пока нет' };
       const d = p[1] ? p[2] - p[1] : null;
       return { cls: d == null ? 'an' : pfBinD(d), main: pct(p[2], 0), sub: p[1] ? `план ${pct(p[1], 0)}` : '', tip: head(mLong(c.key)) + tipRow('Факт', pct(p[2])) + (p[1] ? tipRow('План', pct(p[1])) + tipRow('Разница', `${d >= 0 ? '+' : ''}${fmtF(d * 100, 1)} п.п.`) : '') };
     }
@@ -1515,7 +1516,7 @@ function liftChart() {
   const parts = ['Персонал', 'Ремонт', 'Прочие'], pal = ['var(--c6)', 'var(--c3)', 'var(--c1)'];
   return panel('Лифтинг затраты', '$/барр.', chartBox({ title: 'Лифтинг', cats: FIELDS.map(FS),
     series: parts.map((p, i) => ({ name: p, color: pal[i], values: FIELDS.map(k => (DATA.econ[k].lift.find(r => r[0] === p) || [])[j] ?? null), unit: '$/барр.', stack: 'l' })) }),
-    `${yr === '2025' ? 'Факт 2025 года' : 'План на 2026 год'}. Единицы в книгах не указаны, по смыслу — $/барр.`, seg('liftY', [{ v: '2025', t: '2025' }, { v: '2026', t: '2026' }], yr));
+    `${yr === '2025' ? 'Факт 2025 года' : 'План на 2026 год'}. Единицы — $/барр.`, seg('liftY', [{ v: '2025', t: '2025' }, { v: '2026', t: '2026' }], yr));
 }
 /* --- сводные кольца по шаблону «Главная страница экономика КНП» --- */
 const mainYears = () => [...new Set(FIELDS.flatMap(k => Object.keys((DATA.econMain || { rows: {} }).rows[k] || {})))].sort();
@@ -1546,7 +1547,7 @@ function fcfBlock() {
   const rows = FIELDS.flatMap(k => F.filter(x => x.k === k).sort((a, b) => a.y - b.y).map((x, i, arr) => ({ cls: i === arr.length - 1 ? 'grp-end' : '', cells: [i === 0 ? `<span class="dot" style="background:${FC(k)};margin-right:6px"></span><b>${FS(k)}</b>` : '', `${x.y}${x.y === 2026 ? '*' : ''}`, x.fcf == null ? null : fmtF(x.fcf, 0), x.beNP == null ? null : fmtF(x.beNP, 0), x.beCF == null ? null : fmtF(x.beCF, 0)] })));
   const ys = [...new Set(F.map(x => x.y))].sort();
   const ch = chartBox({ title: 'Free cash flow', cats: FIELDS.map(FS), series: ys.map((y, i) => ({ name: y === 2026 ? `${y} (план)` : String(y), color: ['var(--c8)', 'var(--c3)', 'var(--c1)'][i] || 'var(--c2)', hatch: y === 2026, values: FIELDS.map(k => (F.find(x => x.k === k && x.y === y) || {}).fcf ?? null), unit: 'млн $' })) });
-  return { chart: panel('Free cash flow по годам', 'млн $', ch, '2026 год — плановые показатели.'), table: panel('Free cash flow и цена безубыточности', '', table([{ t: 'Оператор' }, { t: 'Год' }, { t: 'Free CF, млн $', v: true }, { t: 'Breakeven по P&L, $/bbl', v: true }, { t: 'Breakeven по CF, $/bbl', v: true }], rows), '*2026 год — плановые показатели. Источник — шаблон «Главная страница экономика КНП».') };
+  return { chart: panel('Free cash flow по годам', 'млн $', ch, '2026 год — плановые показатели.'), table: panel('Free cash flow и цена безубыточности', '', table([{ t: 'Оператор' }, { t: 'Год' }, { t: 'Free CF, млн $', v: true }, { t: 'Breakeven по P&L, $/bbl', v: true }, { t: 'Breakeven по CF, $/bbl', v: true }], rows), '*2026 год — плановые показатели.') };
 }
 
 /* --- лифтинг затраты: столбцы с подписями сегментов и итогом --- */
@@ -1569,7 +1570,7 @@ function liftBars() {
   });
   const leg = parts.map(([p, c]) => `<span><i style="background:${c}"></i>${p}</span>`).join('') + `<span class="lb-sum">Итого лифтинг — над столбцом</span>`;
   return panel('Лифтинг затраты', '$/барр.', `<div class="lb-leg">${leg}</div><svg class="lb-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Лифтинг затраты">${g}</svg>`,
-    `${yr === '2025' ? 'Факт 2025 года' : 'План на 2026 год'}. Над столбцом — итого лифтинг затрат. Единицы в книгах не указаны, по смыслу — $/барр.`, seg('liftY', [{ v: '2025', t: '2025' }, { v: '2026', t: '2026' }], yr));
+    `${yr === '2025' ? 'Факт 2025 года' : 'План на 2026 год'}. Над столбцом — итого лифтинг затрат. Единицы — $/барр.`, seg('liftY', [{ v: '2025', t: '2025' }, { v: '2026', t: '2026' }], yr));
 }
 
 /* ---------- схема раздела продукции (SVG, анимированная) ---------- */
@@ -1830,7 +1831,7 @@ function grpTable(k) {
     rows.map(r => ({ cls: isMain(r) ? 'grp-main' : 'grp-sub', cells: [isMain(r) ? `<b>${esc(r.name)}</b>` : `<span class="grp-ind">${esc(r.name)}</span>`, esc(r.unit), r.plan == null ? null : fmtF(r.plan, d(r)), r.ytdPlan == null ? null : fmtF(r.ytdPlan, d(r)), r.ytdFact == null ? null : fmtF(r.ytdFact, d(r)),
       r.ytdFact != null && r.ytdPlan != null ? `${r.ytdFact - r.ytdPlan >= 0 ? '+' : ''}${fmtF(r.ytdFact - r.ytdPlan, d(r))}` : null,
       r.ytdPlan ? pill(r.ytdFact / r.ytdPlan, false) : null, r.note ? `<span class="txt econ-note">${esc(r.note)}</span>` : ''] })))
-    + `<p class="note">Для затрат «ниже плана» отмечено синим, «выше плана» — красным.${fx ? ' Часть значений в книге указана в тыс. $ при подписи «млн $» — приведены к млн $.' : ''}</p>`;
+    + `<p class="note">Для затрат «ниже плана» отмечено синим, «выше плана» — красным.${fx ? ' Часть значений приведена из тыс. $ к млн $.' : ''}</p>`;
 }
 /* ---------- денежные потоки ---------- */
 function cashView(k, r) {
@@ -1846,9 +1847,9 @@ function cashView(k, r) {
   const bud = ['Национальный фонд', 'Республиканский бюджет', 'Местный бюджет'].map(c => ({ c, i: C.cols.indexOf(c) })).filter(x => x.i >= 0);
   const BL = { 'Национальный фонд': 'Нацфонд', 'Республиканский бюджет': 'Респ. бюджет', 'Местный бюджет': 'Местный бюджет' };
   const d2 = bud.length ? donut(bud.map((b, n) => ({ label: BL[b.c] || b.c, v: Math.max(0, sum(rows.map(x => x.v[b.i] || 0))), color: ['var(--c1)', 'var(--c2)', 'var(--c3)'][n], text: `${fm(sum(rows.map(x => x.v[b.i] || 0)))} млн $` })), { v: fm(sum(bud.map(b => sum(rows.map(x => x.v[b.i] || 0))))), l: 'млн $' }) : '';
-  return `${panel(`Денежные потоки ${k === 'Y' ? 'партнёров (дивиденды)' : 'Подрядчика'} и Республики`, 'млн $', main, 'Сплошная заливка — факт по 2025 год, штриховка — план и прогноз из книги.')}
+  return `${panel(`Денежные потоки ${k === 'Y' ? 'партнёров (дивиденды)' : 'Подрядчика'} и Республики`, 'млн $', main, 'Сплошная заливка — факт по 2025 год, штриховка — план и прогноз.')}
     <div style="margin-top:16px">${panel('Доля Республики в денежном потоке', '%', share)}</div>
-    <div class="grid2" style="margin-top:16px">${panel('Итого за период', 'млн $', d1)}${panel('Поступления Республики по бюджетам', 'млн $', d2 || `<div class="empty-note">В книге ${esc(FS(k))} нет разбивки поступлений Республики по бюджетам (Нацфонд, республиканский и местный бюджеты).</div>`)}</div>`;
+    <div class="grid2" style="margin-top:16px">${panel('Итого за период', 'млн $', d1)}${panel('Поступления Республики по бюджетам', 'млн $', d2 || `<div class="empty-note">По ${esc(FS(k))} нет разбивки поступлений Республики по бюджетам (Нацфонд, республиканский и местный бюджеты).</div>`)}</div>`;
 }
 /* ---------- показатели ---------- */
 function indView(k) {
@@ -1856,7 +1857,7 @@ function indView(k) {
   const kind = n => /^(Чистый )?[Дд]енежный поток (Подрядчика|Республики)/.test(n) ? 'ind-cf' : /^Доля /.test(n) ? 'ind-pct' : '';
   const etab = (t, title) => t ? `<h3 class="sub-h">${title}</h3>` + table([{ t: 'Показатель' }].concat(t.cols.map(c => ({ t: esc(c), v: true }))), t.rows.map(r => ({ cls: kind(r[0]), cells: [esc(r[0])].concat(r.slice(1).map(v => v == null ? null : fmtF(v, Math.abs(v) < 100 ? 2 : 0))) }))) : '';
   let html = etab(e.contr, k === 'Y' ? `Основные показатели деятельности ${FS(k)}` : 'Экономические показатели Подрядчика');
-  if (k === 'Y') html += `<p class="note">Единицы — как в книге: суммы в строках указаны в разных единицах (млн $ и тыс. $).</p>`;
+  if (k === 'Y') html += `<p class="note">Суммы в строках указаны в разных единицах (млн $ и тыс. $).</p>`;
   html += etab(e.rep, 'Экономические показатели Республики');
   html += `<h3 class="sub-h">Лифтинг затраты</h3>` + table([{ t: 'Статья' }, { t: 'Факт 2025', v: true }, { t: 'План 2026', v: true }, { t: 'Изменение', v: true }],
     e.lift.map(r => ({ cells: [r[0], fmtF(r[1], 2), fmtF(r[2], 2), r[1] ? `${r[2] - r[1] >= 0 ? '+' : ''}${pct(r[2] / r[1] - 1, 0)}` : null] }))
@@ -1880,7 +1881,7 @@ RENDER.econ = {
       const ys = DATA.econ[k].scheme.rows.map(x => String(x.y));
       const r = yrRange('sch' + k, ys, [ys[0], '2026']);
       const tabsF = `<div class="fl-assets" role="tablist" aria-label="Проект">${FIELDS.map(f => `<button type="button" role="tab" aria-selected="${f === k}" class="${f === k ? 'on' : ''}" data-goto="${f}">${FS(f)}</button>`).join('')}</div>`;
-      html += widePanel(panel(k === 'Y' ? `Распределение доходов ${FS(k)}` : `Схема раздела продукции ${FS(k)}`, `сумма за ${r.from}–${r.to} · данные на ${MNF[+LAST_COMMON().slice(5) - 1]} ${LAST_COMMON().slice(0, 4)}, млн $`, tabsF + schemeSVG(k, { from: r.from, to: r.to }), 'Проценты на стрелках — доля от вышестоящего показателя. Наведите на блок — подсветятся его связи, нажмите — откроется расшифровка. 2026 год — план / оценка из книги.', r.html));
+      html += widePanel(panel(k === 'Y' ? `Распределение доходов ${FS(k)}` : `Схема раздела продукции ${FS(k)}`, `сумма за ${r.from}–${r.to} · данные на ${MNF[+LAST_COMMON().slice(5) - 1]} ${LAST_COMMON().slice(0, 4)}, млн $`, tabsF + schemeSVG(k, { from: r.from, to: r.to }), 'Проценты на стрелках — доля от вышестоящего показателя. Наведите на блок — подсветятся его связи, нажмите — откроется расшифровка. 2026 год — план / оценка.', r.html));
     } else if (view === 'capex') {
       html += capexOpex(k) + grpTable(k);
     } else if (view === 'cash') {
@@ -1943,7 +1944,7 @@ function pjBudgetViz(b) {
 function pjTimeline(years, start) {
   if (!years.length) return '';
   const y0 = Math.min(2024, ...years), y1 = Math.max(...years, 2027), W = 100 / (y1 - y0);
-  return `<div class="pj-tl"><span class="pj-k">Сроки, упомянутые в книге</span><div class="pj-tl-bar"><i class="now" style="left:${(2026.75 - y0) * W}%" title="сейчас"></i>${years.map((y, i) => `<span class="pj-tl-y${y === start ? ' st' : ''}" style="left:${(y - y0) * W}%;animation-delay:${300 + i * 90}ms">${y}</span>`).join('')}</div></div>`;
+  return `<div class="pj-tl"><span class="pj-k">Ключевые сроки</span><div class="pj-tl-bar"><i class="now" style="left:${(2026.75 - y0) * W}%" title="сейчас"></i>${years.map((y, i) => `<span class="pj-tl-y${y === start ? ' st' : ''}" style="left:${(y - y0) * W}%;animation-delay:${300 + i * 90}ms">${y}</span>`).join('')}</div></div>`;
 }
 function RENDER_PROJ_BOOK(k) {
   const P = DATA.prod[k].projects || [];
@@ -2036,7 +2037,7 @@ function pjCard(k, p, i) {
 RENDER.proj = {
   field(k) {
     const D_ = pjDeck(k);
-    let html = secHead(`Проекты · ${FN(k)}`, D_ ? 'Стадия, суть, финансовые показатели и статус — по презентации «Инвпроекты ДКНП»; бюджет 2026 года — из ГРПиБ.' : 'Данные из книги проекта.');
+    let html = secHead(`Проекты · ${FN(k)}`, D_ ? 'Стадия, суть, финансовые показатели, статус и бюджет 2026 года.' : 'Описание, статус и основные риски проекта.');
     if (((DATA.passports || {}).items || {})[k]) html += `<h3 class="sub-h">Паспорт проекта</h3>${passportCard(k, FC(k))}<h3 class="sub-h">Инвестиционные проекты</h3>`;
     html += pjPhases(k);
     if (D_) html += `<div class="pj-list">${D_.map((p, i) => pjCard(k, p, i)).join('')}</div>`;
@@ -2251,7 +2252,7 @@ async function exportPPTX(secs) {
       tbl(sl, ['Месторождение', 'Период', 'Факт', 'План', 'Выполнение', 'Ср. цена'], rows, { colW: [4.33, 2.0, 1.5, 1.5, 1.5, 1.5] });
       const lis = FIELDS.map(k => mkStats(DATA.mk[k].products[0]).li), mx = Math.max(...lis);
       const lag = FIELDS.filter((k, i) => lis[i] < mx).map(k => `${FS(k)} — по ${MNF[lis[FIELDS.indexOf(k)]]}`);
-      if (lag.length) note(sl, `Периоды различаются: в источнике ещё нет последнего месяца для ${lag.join(', ')}.`);
+      if (lag.length) note(sl, `Периоды различаются: ещё нет данных за последний месяц для ${lag.join(', ')}.`);
       FIELDS.forEach(k => {
         const r = ref(k, 'mk'); if (!r) return;
         const s3 = tSlide(refTitle(r.title), FN(k));
@@ -2264,7 +2265,7 @@ async function exportPPTX(secs) {
       const sl = tSlide('Энергетика: мощность собственной генерации', 'МВт');
       tbl(sl, ['Месторождение', 'Установленная', 'Фактическая', 'Загрузка', 'Период / режим'],
         FIELDS.map((k, i) => { const e = enSummary(k); return [names[i], fmt(e.cap, 1), fmt(e.out, 1), P(e.out / e.cap), e.label]; }), { colW: [4.33, 1.8, 1.8, 1.6, 2.8] });
-      note(sl, 'Периоды в источниках разные: они указаны в последнем столбце.');
+      note(sl, 'Периоды данных разные: они указаны в последнем столбце.');
     }
     if (t === 'eco') {
       const sl = tSlide('Выбросы парниковых газов', 'тыс. т CO₂-экв.');
@@ -2296,7 +2297,7 @@ async function exportPPTX(secs) {
     if (t === 'proj') {
       const A = pjAll();
       const rows = A.map(x => [x.k ? FS(x.k) : (x.p.owner || ''), x.p.name, x.p.stage, x.p.fin && x.p.fin.capex != null ? fmt(x.p.fin.capex) : '—', x.p.fin && x.p.fin.npv != null ? fmt(x.p.fin.npv) : '—', x.p.fin && x.p.fin.irr != null ? fmtF(x.p.fin.irr, 1) + '%' : '—', x.p.fin && x.p.fin.pp ? String(x.p.fin.pp) : '—', x.p.finish || '—']);
-      const sl = tSlide('Портфель инвестиционных проектов', 'CAPEX и NPV — млн $; по презентации «Инвпроекты ДКНП»');
+      const sl = tSlide('Портфель инвестиционных проектов', 'CAPEX и NPV — млн $');
       tbl(sl, ['Проект', 'Название', 'Стадия', 'CAPEX', 'NPV', 'IRR', 'Окуп.', 'Завершение'], rows, { colW: [1.3, 2.3, 1.6, 1.0, 1.0, 0.9, 0.8, 3.43], fs: 9, left: true });
     }
     if (t === 'lc') {
@@ -2405,7 +2406,7 @@ const EXTRA = {
   },
   mkAll() {
     const S2 = FIELDS.map(k => ({ k, st: mkStats(DATA.mk[k].products[0]) }));
-    return `<h3 class="sub-h">Карта реализации нефти</h3>${panel('Реализация нефти 2026: план и факт по месяцам', 'тыс. т', `<p class="pf-how">Как читать: сверху — выполнение плана, снизу — <b>факт / план</b>. План — сумма по всем направлениям.</p>${mkPF()}`, 'Пунктирные ячейки — месяцы без факта: показан только план. Y: факт реализации за сентябрь в источнике ещё не внесён.')}<div style="margin-top:16px">${panel('Выполнение плана реализации нефти, 2026', 'факт / план за период', rings(S2.map(({ k, st }) => ({ label: `${dotHTML(k)}${FS(k)}`, r: st.r, text: pct(st.r, 0), color: FC(k), sub: `${fmt(st.f)} из ${fmt(st.p)} тыс. т, ${ytdLabel(st.li + 1)}` }))))}</div>`;
+    return `<h3 class="sub-h">Карта реализации нефти</h3>${panel('Реализация нефти 2026: план и факт по месяцам', 'тыс. т', `<p class="pf-how">Как читать: сверху — выполнение плана, снизу — <b>факт / план</b>. План — сумма по всем направлениям.</p>${mkPF()}`, 'Пунктирные ячейки — месяцы без факта: показан только план. Y: факт реализации за сентябрь ещё не внесён.')}<div style="margin-top:16px">${panel('Выполнение плана реализации нефти, 2026', 'факт / план за период', rings(S2.map(({ k, st }) => ({ label: `${dotHTML(k)}${FS(k)}`, r: st.r, text: pct(st.r, 0), color: FC(k), sub: `${fmt(st.f)} из ${fmt(st.p)} тыс. т, ${ytdLabel(st.li + 1)}` }))))}</div>`;
   },
   enAll() {
     const E = FIELDS.map(k => ({ k, ...enSummary(k) }));
@@ -2417,7 +2418,7 @@ const EXTRA = {
     return `<div style="margin-top:16px">${panel('Структура выбросов, 2025', 'тыс. т CO₂-экв.', donut(Y.map(x => ({ label: FS(x.k), v: x.o.t, color: FC(x.k), text: `${fmt(x.o.t, 1)} тыс. т` })), { v: fmt(sum(Y.map(x => x.o.t)), 0), l: 'тыс. т CO₂-экв.' }), 'Выбросы за 2025 год по данным листов «Экология».')}</div>`;
   },
   relAll() {
-    return `<div style="margin-top:16px">${pfBlock('pfRel', 'Эффективность: план и факт по месяцам', '%', relPF, 'Цвет — разница факта с планом в процентных пунктах. * — план выше 100% (вероятная ошибка в источнике), месяц исключён из среднего.', 'Как читать: сверху — <b>фактическая эффективность</b>, снизу — план. Наведите на ячейку для подробностей.')}</div>`;
+    return `<div style="margin-top:16px">${pfBlock('pfRel', 'Эффективность: план и факт по месяцам', '%', relPF, 'Цвет — разница факта с планом в процентных пунктах. * — план выше 100% (вероятная ошибка в данных), месяц исключён из среднего.', 'Как читать: сверху — <b>фактическая эффективность</b>, снизу — план. Наведите на ячейку для подробностей.')}</div>`;
   },
   lcAll() {
     const L = FIELDS.map(k => ({ k, d: DATA.lc.dyn[k].filter(x => x.share != null).pop() })).filter(x => x.d);
