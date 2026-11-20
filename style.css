@@ -1055,3 +1055,15 @@ tr.ind-pct td{font-style:italic;color:var(--ink-2)}
 
 /* ===== Без синего градиентного свечения на панелях с горизонтальными барами ===== */
 .hbp::before{display:none!important;animation:none!important}
+
+/* ===== Местное содержание: сводная таблица и примечания ===== */
+.lc-sum .tbl-wrap{border:0;border-radius:0}
+.lc-sum th.pl,.lc-sum td.pl{background:color-mix(in srgb,var(--surface-2) 70%,transparent);color:var(--ink-2);font-style:italic}
+.lc-sum td.lc-ind{padding-left:26px;color:var(--ink-2);font-style:italic}
+.lc-sum tr.tot td.pl{font-weight:600}
+.lc-notes ul{margin:4px 0 0;padding-left:18px;display:grid;gap:6px;font-size:13.5px;color:var(--ink-2);line-height:1.5}
+
+/* ===== Ровные синие линии: одна полоса у заголовков и одна линия над карточками показателей ===== */
+.sec-head h2::before{display:none}
+.sec-head h2{border-left:4px solid #00aeef;padding-left:12px}
+.kpi,.kpis .kpi:first-child{border-top:0}

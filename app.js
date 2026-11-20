@@ -1110,15 +1110,17 @@ RENDER.lc = {
     const dl = dyn.filter(d => d.share != null).pop();
     const dlMs = dyn.filter(d => d.ms != null).pop();
     const natShareIdx = nat.cols.findIndex(c => /Доля|Национализация/.test(c)) + 1;
-    const nl = nat.rows.filter(r => r[natShareIdx] != null && r[natShareIdx] > 0).pop();
+    const nl = nat.rows.filter(r => r[natShareIdx] != null && r[natShareIdx] > 0 && !/план/i.test(r[0])).pop();
     const ks = [
-      { l: `Доля МС в общих затратах, ${dl.y}`, v: pct(dl.share, 0), s: dyn.length > 1 ? `${dyn[0].y}: ${pct(dyn[0].share, 0)}` : '' },
-      { l: `Затраты на МС, ${dlMs.y}`, v: fmt(dlMs.ms, 1), u: 'млн $' },
+      { l: `${dlMs ? 'Доля МС в общих затратах' : 'Доля КС в ТРУ'}, ${dl.y}`, v: pct(dl.share, 0), s: dyn.length > 1 ? `${dyn[0].y}: ${pct(dyn[0].share, 0)}` : '' },
     ];
+    if (dlMs) ks.push({ l: `Затраты на МС, ${dlMs.y}`, v: fmt(dlMs.ms, 1), u: 'млн $' });
     if (nl) ks.push({ l: `Доля казахстанского персонала, ${nl[0]}`, v: pct(nl[natShareIdx], 1), s: nat.cols[natShareIdx - 1] });
     const tl = CATS.map(c => facts.find(x => x.y === lastY && x.cat === c));
     if (tl.some(Boolean)) ks.push({ l: `Доля МС в ТРУ, ${lastY}`, v: tl.map(t => t ? fmt(t.share * 100, 0) : '—').join(' / ') + '<small>%</small>', s: 'товары / работы / услуги' });
     let html = secHead(`Местное содержание · ${FN(k)}`, 'Доля казахстанского содержания в закупках товаров, работ и услуг (ТРУ), затраты на МС и национализация персонала.') + kpis(ks);
+    const SM = DATA.lc.sum && DATA.lc.sum[k];
+    if (SM) html += `<div class="panel lc-sum"><div class="chart-head"><h3>Казахстанское содержание: сводка</h3><span class="unit">${esc(SM.unit || 'млн $ (доля КС, %)')}</span></div><div class="tbl-wrap"><table><thead><tr><th>Показатель</th>${SM.cols.map(c => `<th class="v${/план/.test(c) ? ' pl' : ''}">${esc(c)}</th>`).join('')}</tr></thead><tbody>${SM.rows.map(r => `<tr class="${/^(КС в ТРУ|Всего ТРУ)$/.test(r[0]) ? 'tot' : ''}"><td${/^(Товары|Работы|Услуги)$/.test(r[0]) ? ' class="lc-ind"' : ''}>${esc(r[0])}</td>${r.slice(1).map((v, i) => `<td class="v${/план/.test(SM.cols[i]) ? ' pl' : ''}">${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>`;
     // TRU chart: cats=years, series per category (fact solid, plan hatched)
     const hasPlan = tru.some(t => t.st === 'План');
     const series = [];
@@ -1129,24 +1131,28 @@ RENDER.lc = {
     const truChart = chartBox({ title: 'ТРУ', cats: years, series, yFmt: v => fmt(v) + '%', tipFmt: v => fmtF(v, 1) + '%', yMax: 100, height: 260 });
     const dynChart = chartBox({
       title: 'Динамика', cats: dyn.map(d => d.y),
-      series: [{ name: 'Затраты на МС', color: FC(k), values: dyn.map(d => d.ms), unit: 'млн $' }, { name: 'Доля МС в общих затратах', color: 'var(--ink-2)', kind: 'line', axis: 'right', values: dyn.map(d => d.share == null ? null : d.share * 100) }],
-      rFmt: v => fmt(v) + '%', tipFmt: (v, s) => s.axis === 'right' ? fmtF(v, 1) + '%' : fmt(v, 1) + ' млн $', rZero: true
+      series: dlMs ? [{ name: 'Затраты на МС', color: FC(k), values: dyn.map(d => d.ms), unit: 'млн $' }, { name: 'Доля МС в общих затратах', color: 'var(--ink-2)', kind: 'line', axis: 'right', values: dyn.map(d => d.share == null ? null : d.share * 100) }]
+        : [{ name: 'Доля КС в ТРУ', color: FC(k), kind: 'line', values: dyn.map(d => d.share == null ? null : d.share * 100) }],
+      zero: !dlMs ? false : undefined, yFmt: dlMs ? undefined : v => fmt(v) + '%',
+      rFmt: v => fmt(v) + '%', tipFmt: (v, s) => s.axis === 'right' || !dlMs ? fmtF(v, 1) + '%' : fmt(v, 1) + ' млн $', rZero: true
     });
-    html += `<div class="grid2">${panel('Доля МС в закупках ТРУ', '%', truChart, '')}${panel('Затраты на МС и их доля', 'млн $ · %', dynChart, k === 'Y' ? 'Значения одинаковы за все годы (400 млн $ и 60%).' : '')}</div>`;
+    html += `<div class="grid2">${panel('Доля МС в закупках ТРУ', '%', truChart, '')}${panel(dlMs ? 'Затраты на МС и их доля' : 'Доля КС в закупках ТРУ', dlMs ? 'млн $ · %' : '%', dynChart, '')}</div>`;
     // nationalization chart
     const nr = nat.rows.filter(r => r.slice(1).some(v => v != null && v !== 0));
     const countCols = nat.cols.map((c, i) => i + 1).filter(i => i !== natShareIdx && !/Руководство/.test(nat.cols[i - 1]));
     const natSeries = countCols.map((ci, j) => ({ name: nat.cols[ci - 1], color: j ? 'var(--c7)' : FC(k), values: nr.map(r => r[ci] || null), hatch: /план/i.test(nat.cols[ci - 1]) }))
       .concat([{ name: nat.cols[natShareIdx - 1], color: 'var(--ink-2)', kind: 'line', axis: 'right', values: nr.map(r => r[natShareIdx] ? r[natShareIdx] * 100 : null) }]);
     const mgmt = nat.cols.indexOf('Руководство');
-    if (mgmt >= 0) natSeries.push({ name: 'Доля казахстанцев в руководстве', color: 'var(--c5)', kind: 'line', axis: 'right', values: nr.map(r => r[mgmt + 1] * 100) });
+    if (mgmt >= 0) natSeries.push({ name: 'Доля казахстанцев в руководстве', color: 'var(--c5)', kind: 'line', axis: 'right', values: nr.map(r => r[mgmt + 1] == null ? null : r[mgmt + 1] * 100) });
     const natS = natSeries.filter(s => s.values.some(v => v != null));
     if (!natS.some(s => s.kind !== 'line')) natS.forEach(s => { s.axis = 'left'; });
     const natChart = chartBox({ title: 'Национализация', cats: nr.map(r => r[0]), series: natS, zero: natS.some(s => s.kind !== 'line'), yFmt: natS.some(s => s.kind !== 'line') ? undefined : v => fmt(v, 1) + '%', rFmt: v => fmt(v) + '%', tipFmt: (v, s) => s.kind === 'line' ? fmtF(v, 1) + '%' : fmt(v), rZero: false });
-    const natNote = { D: 'Количество позиций — штатные позиции; доля казахстанского персонала — правая шкала.', X: 'План и факт — количество национализированных позиций за год; доля — правая шкала.', Y: 'Численность персонала — столбцы; доли — правая шкала.', Z: 'Плановые и фактические значения национализации нулевые; показана только доля персонала.' }[k];
+    const natNote = { D: 'Количество позиций — штатные позиции; доля казахстанского персонала — правая шкала.', X: 'План и факт — количество национализированных позиций за год; доли — правая шкала.', Y: 'Численность персонала — столбцы; доли — правая шкала.', Z: 'Доля казахстанского персонала и доля казахстанцев в руководстве; 2026 — план.' }[k];
     const truTbl = table([{ t: 'Год' }, { t: 'Статус' }, { t: 'Категория' }, { t: 'Доля МС', v: true }, { t: 'Затраты на МС, млн $', v: true }, { t: 'Затраты всего, млн $', v: true }],
       tru.slice().sort((a, b) => b.y.localeCompare(a.y) || a.st.localeCompare(b.st) || CATS.indexOf(a.cat) - CATS.indexOf(b.cat)).map(t => ({ cells: [esc(t.y), t.st === 'План' ? '<span class="sc">план</span>' : 'факт', esc(t.cat), pct(t.share, 1), t.ms == null ? null : fmt(t.ms, 1), t.all == null ? null : fmt(t.all, 1)] })), { max: 380 });
     html += `<div class="grid2" style="margin-top:16px">${panel('Национализация персонала', '', natChart, natNote)}<div class="panel"><div class="chart-head"><h3>Закупки ТРУ: данные</h3></div>${truTbl}</div></div>`;
+    const NT = DATA.lc.notes && DATA.lc.notes[k];
+    if (NT && NT.length) html += `<div class="panel lc-notes" style="margin-top:16px"><div class="chart-head"><h3>Примечания</h3></div><ul>${NT.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>`;
     const src = `книга ${k}, листы «ТРУ», «Динамика доли затрат», «Национализация».`;
     return `<section>${html}${srcNote(src)}</section>`;
   },
@@ -1159,7 +1165,7 @@ RENDER.lc = {
     const lastFact = k => { const f = DATA.lc.tru[k].filter(t => t.st === 'Факт'); const y = [...new Set(f.map(t => t.y))].sort().pop(); return { y, rows: f.filter(t => t.y === y) }; };
     const truRows = FIELDS.map(k => { const L = lastFact(k); return { label: `<span class="dot" style="background:${FC(k)};margin-right:6px"></span>${FS(k)} <span class="txt" style="display:inline">(${esc(L.y)})</span>`, bars: CATS.map(c => { const t = L.rows.find(x => x.cat === c); return { v: t ? t.share : null, color: CATC[c], text: t ? `${c.toLowerCase()} ${pct(t.share, 0)}` : '—' }; }) }; });
     return `<section>${secHead('Местное содержание · все месторождения', 'Доля МС в затратах, в закупках ТРУ и доля казахстанского персонала.')}
-      <div class="grid2">${panel('Доля МС в общих затратах', '%', share, '* 2026 — I–II кварталы. Y: одинаковое значение 60% за все годы.')}${panel('Доля казахстанского персонала', '%', nat, '* 2026 — I–II кварталы.')}</div>
+      <div class="grid2">${panel('Доля МС в общих затратах', '%', share, '2026 9 мес. — факт за январь–сентябрь.')}${panel('Доля казахстанского персонала', '%', nat, '2026 9 мес. — факт за январь–сентябрь; 2026 план — плановое значение.')}</div>
       <div style="margin-top:16px">${panel('Доля МС в закупках ТРУ, последний год с фактом', '%', hbLegend(CATS.map(c => ({ name: c, color: CATC[c] }))) + hbars(truRows, { max: 1 }))}</div>
       ${EXTRA.lcAll()}${srcNote('листы «ТРУ», «Динамика доли затрат», «Национализация» каждой книги.')}</section>`;
   }
