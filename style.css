@@ -1036,3 +1036,18 @@ tr.ind-pct td{font-style:italic;color:var(--ink-2)}
 
 /* ===== Без сканирующей вертикальной линии на панелях графиков ===== */
 .hbp::after{display:none!important;animation:none!important}
+
+/* ===== Логотипы компаний ===== */
+.lg{display:inline-flex;align-items:center;justify-content:center;flex:none;background:#fff;border-radius:8px;box-shadow:0 0 0 1px var(--rule);overflow:hidden}
+.lg img{display:block;width:auto;height:100%;max-height:100%;object-fit:contain}
+.sec-logo{height:56px;padding:5px 8px;align-self:center}
+.sec-head:has(.sec-logo){justify-content:flex-start}
+.sec-head:has(.sec-logo)>div:nth-child(2){flex:1}
+.ov-logo{height:62px;padding:4px 6px}
+.op-logo{height:34px;padding:3px 5px;margin-right:2px}
+.op-top:has(.op-logo){justify-content:flex-start}
+.op-top:has(.op-logo) .pill{margin-left:auto}
+@media (max-width:760px){.sec-logo{height:42px}}
+
+/* ===== Без синего градиентного свечения на панелях с горизонтальными барами ===== */
+.hbp::before{display:none!important;animation:none!important}

@@ -304,6 +304,7 @@ function seg(id, opts, cur, cls = 'sm') {
 }
 function secHead(t, p, right) { t = NM(t); p = NM(p); return `<div class="sec-head"><div><h2>${t}</h2>${p ? `<p>${p}</p>` : ''}</div>${right || ''}</div>`; }
 function srcNote(t) { return ''; }
+const logoImg = (k, cls = '') => DATA && DATA.logos && DATA.logos[k] ? `<span class="lg ${cls}"><img src="${DATA.logos[k]}" alt="${esc(FS(k))}" loading="lazy"></span>` : '';
 
 /* ============================================================
    State
@@ -334,6 +335,7 @@ function render(mode = 'full') {
   const r = RENDER[S.tab];
   const main = $('#main');
   main.innerHTML = S.field === 'all' ? r.all() : r.field(S.field);
+  if (S.field !== 'all') { const lg = logoImg(S.field, 'sec-logo'), h = main.querySelector('.sec-head'); if (lg && h) h.insertAdjacentHTML('afterbegin', lg); }
   const prevSig = LAST_SIG; LAST_SIG = new Set();
   CHARTS.forEach(c => { LAST_SIG.add(c.sig); if (!REDUCED && (mode === 'full' || !prevSig.has(c.sig))) { const el = document.getElementById(c.id); if (el) el.dataset.anim = '1'; } });
   main.classList.toggle('fx-on', mode === 'full' && !REDUCED);
@@ -407,7 +409,7 @@ function ovRes(res) {
 function ovCard(k, full) {
   const f = ovF(k), c = f.contract;
   return `<article class="ov-card" style="--c:${FC(k)}">
-    <header><span class="ov-mk${FS(k).length > 4 ? ' sm' : ''}">${esc(FS(k))}</span><div><h3>${esc(FS(k))}</h3><span class="ov-fn">${esc(FN(k))}</span></div></header>
+    <header>${full ? '' : logoImg(k, 'ov-logo') || `<span class="ov-mk${FS(k).length > 4 ? ' sm' : ''}">${esc(FS(k))}</span>`}<div><h3>${esc(FS(k))}</h3><span class="ov-fn">${esc(FN(k))}</span></div></header>
     <div class="ov-ct"><span>${esc(c.type)}</span><b>${c.from} – ${c.to} гг.</b><small>осталось ${ovYears(ovLeft(k))}</small></div>
     ${ovBlock('Накопленная добыча', ovList(f.cum))}
     ${ovBlock('Запасы', ovRes(f.res))}
@@ -675,7 +677,7 @@ RENDER.prod = {
   all() {
     const cards = FIELDS.map(k => {
       const q = prodStats(k, 'oil', LAST_COMMON()), qg = prodStats(k, 'agas', LAST_COMMON());
-      return `<button type="button" class="op" data-goto="${k}"><div class="op-top"><span class="op-name"><span class="dot" style="background:${FC(k)}"></span>${FS(k)}<small class="op-full">${esc(FN(k).replace(/^[^(]*\(|\)$/g, ''))}</small></span>${pill(q.ratio)}</div>
+      return `<button type="button" class="op" data-goto="${k}"><div class="op-top">${logoImg(k, 'op-logo')}<span class="op-name"><span class="dot" style="background:${FC(k)}"></span>${FS(k)}<small class="op-full">${esc(FN(k).replace(/^[^(]*\(|\)$/g, ''))}</small></span>${pill(q.ratio)}</div>
       <dl><dt>Нефть, факт ${ytdLabel(q.months)}</dt><dd>${fmt(q.fYTD)} тыс. т</dd><dt>План за период</dt><dd>${fmt(q.pYTD)} тыс. т</dd>
       <dt>План 2026</dt><dd>${fmt(q.plan26)} тыс. т</dd><dt>Факт 2025</dt><dd>${fmt(q.fact25)} тыс. т</dd>
       <dt>Газ, факт с нач. года</dt><dd>${fmt(qg.fYTD)} млн м³</dd></dl>${sparkProd(k)}</button>`;
@@ -790,7 +792,7 @@ RENDER.mk = {
   },
   all() {
     const S2 = FIELDS.map(k => ({ k, st: mkStats(DATA.mk[k].products[0]) }));
-    const cards = S2.map(({ k, st }) => `<button type="button" class="op" data-goto="${k}"><div class="op-top"><span class="op-name"><span class="dot" style="background:${FC(k)}"></span>${FS(k)}<small class="op-full">${esc(FN(k).replace(/^[^(]*\(|\)$/g, ''))}</small></span>${pill(st.r)}</div>
+    const cards = S2.map(({ k, st }) => `<button type="button" class="op" data-goto="${k}"><div class="op-top">${logoImg(k, 'op-logo')}<span class="op-name"><span class="dot" style="background:${FC(k)}"></span>${FS(k)}<small class="op-full">${esc(FN(k).replace(/^[^(]*\(|\)$/g, ''))}</small></span>${pill(st.r)}</div>
       <dl><dt>Нефть, факт ${ytdLabel(st.li + 1)}</dt><dd>${fmt(st.f)} тыс. т</dd><dt>План за период</dt><dd>${fmt(st.p)} тыс. т</dd>
       <dt>Ср. цена</dt><dd>${st.price == null ? '—' : fmt(st.price, 1) + ' ' + DATA.mk[k].products[0].priceUnit}</dd><dt>Направления</dt><dd>${DATA.mk[k].products[0].dirs.map(d => d.name).join(', ')}</dd></dl></button>`).join('');
     const ktk = FIELDS.filter(k => DATA.mk[k].products[0].dirs.some(d => d.name === 'КТК' && d.price && d.price.some(v => v)));
@@ -1535,9 +1537,9 @@ function mainDonut(r, i, unit, title, note) {
 function prodDonuts() {
   const ys = mainYears(), r = yrRange('pMain', ys, [ys[0], '2026']);
   const n26 = MONTHS26.filter(m => m <= LAST_COMMON()).length;
-  const note = `${r.from}–${Math.min(r.to, 2025)} — по шаблону «Главная страница экономика КНП»; 2026 год — факт за ${n26} мес. из помесячных данных.`;
+  const note = `${r.from}–${Math.min(r.to, 2025)} — годовые данные; 2026 год — факт за ${n26} мес.`;
   const cuD = r.from <= +ys[0] && r.to >= 2026 ? cumOilThrough('D') : null;
-  const noteCum = cuD ? ` ${FS('D')} за весь период — по справочному значению накопленной добычи (на ${cumDateLabel(cuD.ym)}) плюс факт последующих месяцев.` : '';
+  const noteCum = cuD ? ` ${FS('D')} за весь период — накопленная добыча на ${cumDateLabel(cuD.ym)} плюс факт последующих месяцев.` : '';
   return `<h3 class="sub-h">Накопленная добыча</h3><div class="econ-range">${r.html}</div><div class="econ-donuts">${mainDonut(r, 0, 'тыс. т', 'Добыча нефти', note + noteCum)}${mainDonut(r, 1, 'млн м³', 'Добыча газа', note)}</div>`;
 }
 
@@ -1899,7 +1901,7 @@ RENDER.econ = {
       rows.map(({ k, g, c, o, u }) => ({ cells: [`<button class="lnk" data-goto="${k}"><span class="dot" style="background:${FC(k)};margin-right:6px"></span>${FS(k)}</button>`, esc(g.period), c ? fmtF(c.ytdPlan, 1) : null, c ? fmtF(c.ytdFact, 1) : null, c && c.ytdPlan ? pill(c.ytdFact / c.ytdPlan, false) : null, o ? fmtF(o.ytdPlan, 1) : null, o ? fmtF(o.ytdFact, 1) : null, o && o.ytdPlan ? pill(o.ytdFact / o.ytdPlan, false) : null, u && u.ytdFact != null ? fmtF(u.ytdFact, 2) : null] })));
     const bars = (key, color, title) => chartBox({ title, cats: FIELDS.map(FS), series: [{ name: 'План с начала года', color: 'var(--c8)', hatch: true, values: rows.map(x => x[key] ? x[key].ytdPlan : null), unit: 'млн $' }, { name: 'Факт с начала года', color, values: rows.map(x => x[key] ? x[key].ytdFact : null), unit: 'млн $' }] });
     return `<section>${secHead('Финансово-экономические показатели', 'Выплаты Республике и доля КМГ за выбранный период; лифтинг затраты и исполнение бюджета 2026 года.', r.html)}
-      <div class="econ-donuts">${mainDonut(r, 2, 'млн $', 'Выплаты Республике', 'По шаблону «Главная страница экономика КНП».')}${mainDonut(r, 3, 'млн $', 'ЧДП / дивиденды, доля КМГ', 'По шаблону «Главная страница экономика КНП». Отрицательная сумма (инвестиционная фаза) показана на диаграмме как 0.')}</div>
+      <div class="econ-donuts">${mainDonut(r, 2, 'млн $', 'Выплаты Республике', '')}${mainDonut(r, 3, 'млн $', 'ЧДП / дивиденды, доля КМГ', 'Отрицательная сумма (инвестиционная фаза) показана на диаграмме как 0.')}</div>
       ${(() => { const f = fcfBlock(); return `<div class="grid2">${f.chart}${liftBars()}</div>${f.table}`; })()}
       <div class="grid2">${panel('Капитальные затраты с начала года', 'млн $', bars('c', 'var(--c1)', 'Capex'))}${panel('Эксплуатационные расходы с начала года', 'млн $', bars('o', 'var(--c2)', 'Opex'))}</div>
       ${panel('Исполнение ГРПиБ 2026', '', tbl, 'Периоды указаны в таблице.')}
