@@ -1037,17 +1037,21 @@ tr.ind-pct td{font-style:italic;color:var(--ink-2)}
 /* ===== Без сканирующей вертикальной линии на панелях графиков ===== */
 .hbp::after{display:none!important;animation:none!important}
 
-/* ===== Логотипы компаний ===== */
-.lg{display:inline-flex;align-items:center;justify-content:center;flex:none;background:#fff;border-radius:8px;box-shadow:0 0 0 1px var(--rule);overflow:hidden}
-.lg img{display:block;width:auto;height:100%;max-height:100%;object-fit:contain}
-.sec-logo{height:56px;padding:5px 8px;align-self:center}
-.sec-head:has(.sec-logo){justify-content:flex-start}
+/* ===== Логотипы компаний: единые рамки фиксированного размера ===== */
+.lg{display:inline-flex;align-items:center;justify-content:center;flex:none;background:#fff;border-radius:10px;box-shadow:0 0 0 1px var(--rule);overflow:hidden}
+.lg img{display:block;width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain}
+/* заголовок страницы отдельного месторождения */
+.sec-logo{width:104px;height:104px;padding:8px;border-radius:14px;align-self:center}
+.sec-head:has(.sec-logo){justify-content:flex-start;align-items:center}
 .sec-head:has(.sec-logo)>div:nth-child(2){flex:1}
-.ov-logo{height:62px;padding:4px 6px}
-.op-logo{height:34px;padding:3px 5px;margin-right:2px}
-.op-top:has(.op-logo){justify-content:flex-start}
-.op-top:has(.op-logo) .pill{margin-left:auto}
-@media (max-width:760px){.sec-logo{height:42px}}
+/* карточки «Общих данных» */
+.ov-logo{width:64px;height:64px;padding:5px}
+/* карточки «Добычи» и «Маркетинга» в режиме «Все» */
+.op-logo{width:52px;height:52px;padding:4px}
+.op-top:has(.op-logo){display:grid;grid-template-columns:52px 1fr auto;align-items:start;gap:12px}
+.op-top:has(.op-logo) .op-name{align-self:center;min-height:52px;align-content:center}
+.op-top:has(.op-logo) .pill{margin:0;align-self:start;margin-top:14px}
+@media (max-width:760px){.sec-logo{width:72px;height:72px;padding:6px}}
 
 /* ===== Без синего градиентного свечения на панелях с горизонтальными барами ===== */
 .hbp::before{display:none!important;animation:none!important}
