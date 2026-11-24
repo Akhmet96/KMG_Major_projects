@@ -310,7 +310,7 @@ const logoImg = (k, cls = '') => DATA && DATA.logos && DATA.logos[k] ? `<span cl
    State
    ============================================================ */
 const TABS = [
-  { id: 'ov', t: 'Общие данные' }, { id: 'geo', t: 'Геология' }, { id: 'prod', t: 'Добыча' }, { id: 'mk', t: 'Маркетинг' }, { id: 'en', t: 'Энергетика' },
+  { id: 'ov', t: 'Общие данные' }, { id: 'geo', t: 'Геология' }, { id: 'prod', t: 'Добыча' }, { id: 'mk', t: 'Маркетинг' }, { id: 'en', t: 'Электроэнергетика' },
   { id: 'eco', t: 'Экология' }, { id: 'rel', t: 'Надёжность' }, { id: 'lc', t: 'Местное содержание' }, { id: 'econ', t: 'Экономика' }, { id: 'proj', t: 'Проекты' }];
 const S = { tab: 'ov', field: 'all', sub: {} };
 function readHash() {
@@ -341,6 +341,8 @@ function render(mode = 'full') {
   main.classList.toggle('fx-on', mode === 'full' && !REDUCED);
   drawAll();
   enhance(main);
+  enSldBind(main);
+  buildSubnav(main);
   if (mode === 'full') entrance(main);
   placeInk();
   syncMap();
@@ -828,6 +830,82 @@ function enSummary(k) {
   if (k === 'Z') { return { cap: sum(e.units.map(u => u.cap)), out: sum(e.units.map(u => u.fact)), label: 'факт' }; }
 }
 
+
+
+/* --- подразделы: кнопки быстрого перехода по подзаголовкам блоков --- */
+function buildSubnav(main) {
+  const sec = main.querySelector('section'); if (!sec) return;
+  let hs = [...sec.querySelectorAll('.sub-h')].filter(h => !h.closest('.panel'));
+  if (hs.length < 2) {                      // нет подзаголовков — переход по названиям панелей
+    hs = [...sec.querySelectorAll('.panel .chart-head > h3, .pf-yr')].filter(h => !h.closest('.panel .panel') && h.textContent.trim());
+    hs.forEach(h => h.classList.add('sub-anchor'));
+    if (hs.length < 3) return;
+  }
+  const lab = h => { const t = h.dataset.nav || h.textContent.replace(/\s+/g, ' ').split(',')[0].trim(); return t.length > 42 ? t.slice(0, 40) + '…' : t; };
+  hs.forEach((h, i) => h.id = 'sub-' + i);
+  const nav = document.createElement('nav'); nav.className = 'subnav'; nav.setAttribute('aria-label', 'Подразделы');
+  nav.innerHTML = `<div class="subnav-in"><button type="button" data-go="top" class="on">В начало</button>${hs.map((h, i) => `<button type="button" data-go="sub-${i}">${esc(lab(h))}</button>`).join('')}</div>`;
+  const head = sec.querySelector('.sec-head'); (head || sec.firstChild).after(nav);
+  setNavH(); spySubnav();
+}
+function setNavH() { const n = document.querySelector('nav.disc'); if (n) document.documentElement.style.setProperty('--navH', n.offsetHeight + 'px'); }
+function spySubnav() {
+  const nav = document.querySelector('.subnav'); if (!nav) return;
+  const off = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--navH')) || 0) + nav.offsetHeight + 24;
+  const hs = [...document.querySelectorAll('#main .sub-h[id], #main .sub-anchor[id]')];
+  let cur = 'top'; hs.forEach(h => { if (h.getBoundingClientRect().top - off <= 0) cur = h.id; });
+  nav.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.go === cur));
+  const on = nav.querySelector('button.on'); if (on && nav.dataset.cur !== cur) { nav.dataset.cur = cur; const sc = nav.querySelector('.subnav-in'); sc.scrollTo({ left: on.offsetLeft - sc.clientWidth / 2 + on.offsetWidth / 2, behavior: 'smooth' }); }
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('.subnav button'); if (!b) return;
+  if (b.dataset.go === 'top') { const sec = document.querySelector('#main section'); window.scrollTo({ top: sec ? sec.getBoundingClientRect().top + scrollY - (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--navH')) || 0) - 8 : 0, behavior: 'smooth' }); return; }
+  const h = document.getElementById(b.dataset.go); if (h) h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+addEventListener('scroll', () => requestAnimationFrame(spySubnav), { passive: true });
+addEventListener('resize', setNavH);
+
+/* --- электроэнергетика: потребители, примечания, однолинейная схема --- */
+const enCons = (e, c) => e.consCodes && e.consCodes[c] ? `${c} (${e.consCodes[c]})` : c;
+const enNote = (e, name) => (e.notes || []).find(n => (n.units || []).includes(name));
+function enSld(e, cfg = {}) {
+  const S = e.sld; if (!S) return '';
+  const per = cfg.period || mLong(e.lastMonth);
+  const U = {}; (cfg.units || e.unitsLast || []).forEach(u => U[u.name] = u);
+  const g = [], Z2 = [];
+  const T = (x, y, t, cls = '', anchor = 'middle') => `<text x="${x}" y="${y}" class="sl-t ${cls}" text-anchor="${anchor}">${esc(t)}</text>`;
+  (S.zones || []).forEach(z => { const lx = z.lx != null ? z.lx : z.x + 12, ly = z.ly != null ? z.ly : z.y + 24, la = z.la || 'start'; g.push(`<g class="sl-zone" style="--z:${z.color}"><rect x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}" rx="6"/></g>`); Z2.push(T(lx, ly, z.label, 'sl-zl' + (z.cls ? ' ' + z.cls : ''), la) + (z.sub ? T(lx, ly + (z.cls ? 14 : 16), z.sub, 'sl-zs', la) : '')); });
+  (S.boxes || []).forEach(b => g.push(`<rect class="sl-box" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="4"/>${b.label ? T(b.lx != null ? b.lx : b.x + b.w / 2, b.ly != null ? b.ly : b.y + b.h + 15, b.label, 'sl-bl') : ''}`));
+  (S.lines || []).forEach(l => g.push(`<polyline class="sl-ln${l.kv ? ' kv' + l.kv : ''}" points="${l.p.map(q => q.join(',')).join(' ')}"/>${l.label ? T(l.lx, l.ly, l.label, 'sl-ll', l.la || 'start') : ''}`));
+  (S.buses || []).forEach(b => g.push(`<line class="sl-bus" x1="${b.x1}" y1="${b.y}" x2="${b.x2}" y2="${b.y}"/>${b.label ? T(b.lx != null ? b.lx : b.x1, b.y - 6, b.label, 'sl-ll', 'start') : ''}`));
+  (S.brk || []).forEach(b => g.push(`<rect class="sl-brk" x="${b[0] - 7}" y="${b[1] - 7}" width="14" height="14" rx="2"/>`));
+  (S.tr || []).forEach(t => g.push(`<g class="sl-tr"><circle cx="${t[0]}" cy="${t[1] - 6}" r="8"/><circle cx="${t[0]}" cy="${t[1] + 6}" r="8"/></g>${t[2] ? T(t[0] + (t[3] || 12), t[1] + 4, t[2], 'sl-ll', (t[3] || 12) < 0 ? 'end' : 'start') : ''}`));
+  (S.loads || []).forEach(l => g.push(`<line class="sl-ln" x1="${l.x}" y1="${l.y1}" x2="${l.x}" y2="${l.y2 - 8}"/><path class="sl-arw" d="M${l.x - 6},${l.y2 - 10} L${l.x + 6},${l.y2 - 10} L${l.x},${l.y2} Z"/>${(l.label || '').split('\n').map((t, i) => T(l.x, l.y2 + 14 + i * 13, t, 'sl-ld')).join('')}`));
+  (S.gens || []).forEach(q => {
+    const u = U[q.id] || {}, n = enNote(e, q.id);
+    const st = cfg.noFact ? 'na' : n ? n.status : (u.fact ? 'on' : 'off');
+    const tip = `<b>${esc(q.id)}</b>${esc(u.site || u.type || '')}${u.plant ? ' · ' + esc(u.plant) : ''}<br>Уст. мощность: ${u.cap != null ? fmt(u.cap, 1) + ' МВт' : '—'}${q.np ? ` (на схеме ${esc(q.np)})` : ''}${cfg.noFact ? '' : `<br>Факт, ${esc(per)}: ${u.fact != null ? fmt(u.fact, 1) + ' МВт·ч' : 'не работал'}${u.cap && u.fact != null ? `<br>Загрузка: ${pct((u.fact || 0) / u.cap, 0)}` : ''}`}${n ? `<br><i>${esc(n.t)}</i>` : ''}`;
+    g.push(`<g class="sl-gen ${st}${cfg.focus && u.plant !== cfg.focus ? ' dim' : ''}" tabindex="0" data-tip="${esc(tip)}"><circle cx="${q.x}" cy="${q.y}" r="17"/><path d="M${q.x - 9},${q.y} q4.5,-8 9,0 t9,0"/>${st === 'fault' || st === 'out' ? `<path class="sl-x" d="M${q.x - 11},${q.y - 11} L${q.x + 11},${q.y + 11} M${q.x + 11},${q.y - 11} L${q.x - 11},${q.y + 11}"/>` : ''}${T(q.x, q.y - 24, q.label || q.id.replace(/^ТГ-/, ''), 'sl-gl')}${u.fact != null ? T(q.x + 22, q.y + 4, u.fact ? fmt(u.fact, 0) : '0', 'sl-gv', 'start') : ''}</g>`);
+  });
+  (S.texts || []).forEach(t => g.push(T(t[0], t[1], t[2], t[3] || 'sl-ll', t[4] || 'middle')));
+  g.push(...Z2);
+  const leg = cfg.noFact ? `<div class="sl-leg"><span><i></i>газотурбинный генератор</span>${cfg.legNote ? `<span class="sl-legn">${esc(cfg.legNote)}</span>` : ''}</div>`
+    : `<div class="sl-leg"><span><i class="on"></i>в работе</span><span><i class="off"></i>${esc(cfg.offLabel || 'остановлен')}</span>${cfg.short ? '' : '<span><i class="out"></i>выведен из эксплуатации</span><span><i class="fault"></i>выведен из строя (авария)</span>'}<span class="sl-legn">Число справа от генератора — выработка, МВт·ч, ${esc(per)}</span></div>`;
+  return `<div class="sl-wrap"><div class="sl-scroll"><svg class="sl" viewBox="${cfg.clip ? cfg.clip[0] : 0} 0 ${cfg.clip ? cfg.clip[1] - cfg.clip[0] : S.w} ${S.h}"${cfg.clip ? ` style="width:${Math.min(100, (cfg.clip[1] - cfg.clip[0]) / S.w * 160).toFixed(1)}%;min-width:${Math.round(900 * (cfg.clip[1] - cfg.clip[0]) / S.w)}px;margin:0 auto"` : ''} role="img" aria-label="Однолинейная схема электроснабжения">${g.join('')}</svg></div>${leg}<div class="tip sl-tip"></div></div>`;
+}
+function enSldBind(root) {
+  root.querySelectorAll('.sl-wrap').forEach(w => {
+    const tip = w.querySelector('.sl-tip');
+    const show = (el, ev) => { tip.innerHTML = el.dataset.tip; tip.style.opacity = 1; const r = w.getBoundingClientRect(), b = el.getBoundingClientRect(); let x = b.left - r.left + b.width / 2 + 14, y = b.top - r.top - 10; if (x + tip.offsetWidth > r.width) x = b.left - r.left - tip.offsetWidth - 14; tip.style.transform = `translate(${Math.max(0, x)}px,${Math.max(0, y)}px)`; };
+    w.querySelectorAll('.sl-gen').forEach(el => { el.addEventListener('mouseenter', ev => show(el, ev)); el.addEventListener('focus', ev => show(el, ev)); el.addEventListener('mouseleave', () => tip.style.opacity = 0); el.addEventListener('blur', () => tip.style.opacity = 0); });
+  });
+  root.querySelectorAll('.en-map img').forEach(img => img.addEventListener('click', () => {
+    const m = document.createElement('div'); m.className = 'en-lb'; m.innerHTML = `<img src="${img.src}" alt=""><button type="button" aria-label="Закрыть">×</button>`;
+    const close = () => m.remove(); m.addEventListener('click', close); document.addEventListener('keydown', function k(ev) { if (ev.key === 'Escape') { close(); document.removeEventListener('keydown', k); } });
+    document.body.appendChild(m);
+  }));
+}
+
 RENDER.en = {
   field(k) {
     const e = DATA.en[k];
@@ -835,60 +913,104 @@ RENDER.en = {
     if (k === 'D') {
       const cap = sum(e.units.map(u => u.cap)); const a = e.annual[e.annual.length - 1];
       html += kpis([{ l: 'Установленная мощность', v: fmt(cap, 1), u: 'МВт', s: `${e.units.length} × ${fmt(e.units[0].cap, 1)} МВт, ${esc(e.units[0].type)}` },
-      { l: `Генерация, ${a.y}`, v: fmt(a.gen, 2), u: 'МВт', s: `загрузка ${pct(a.gen / cap, 0)} от установленной` },
-      { l: `Потребление, ${a.y}`, v: fmt(a.cons, 2), u: 'МВт' }, { l: `Резерв свободной мощности, ${a.y}`, v: fmt(a.res, 2), u: 'МВт' }]);
+      { l: `Генерация, ${a.y}`, v: fmt(a.gen, 2), u: 'МВт·ч',  s: `загрузка ${pct(a.gen / cap, 0)} от установленной` },
+      { l: `Потребление, ${a.y}`, v: fmt(a.cons, 2), u: 'МВт·ч' }, { l: `Резерв свободной мощности, ${a.y}`, v: fmt(a.res, 2), u: 'МВт·ч' }]);
       const yrs = e.annual.map(a => String(a.y));
-      html += `<div class="grid2">${panel('Генерация: выработка и свободный резерв', 'МВт', chartBox({
+      html += `<div class="grid2">${panel('Генерация: выработка и свободный резерв', 'МВт·ч; уст. мощность — МВт', chartBox({
         title: 'Генерация', cats: yrs,
-        series: [{ name: 'Выработка', color: FC(k), values: e.annual.map(a => a.gen), unit: 'МВт', stack: 'g' }, { name: 'Резерв свободной мощности', color: FC(k), hatch: true, values: e.annual.map(a => a.res), unit: 'МВт', stack: 'g' }],
+        series: [{ name: 'Выработка', color: FC(k), values: e.annual.map(a => a.gen), unit: 'МВт·ч', stack: 'g' }, { name: 'Резерв свободной мощности', color: FC(k), hatch: true, values: e.annual.map(a => a.res), unit: 'МВт·ч', stack: 'g' }],
         refs: [{ v: cap, label: `Установленная ${fmt(cap, 0)} МВт` }], yMax: cap * 1.1,
         tipExtra: i => `<div class="r"><span>Загрузка</span><span>${pct(e.annual[i].gen / cap, 0)}</span></div>`
       }), 'Выработка ГТГ плюс резерв свободной мощности. Пунктир — установленная мощность.')}
-      ${panel('Потребление электроэнергии', 'МВт', chartBox({
+      ${panel('Потребление электроэнергии', 'МВт·ч', chartBox({
         title: 'Потребление', cats: yrs,
-        series: [{ name: 'Потребление', color: 'var(--c7)', values: e.annual.map(a => a.cons), unit: 'МВт' }]
+        series: [{ name: 'Потребление', color: 'var(--c7)', values: e.annual.map(a => a.cons), unit: 'МВт·ч' }]
       }), 'Потребление совпадает с выработкой во все годы: месторождение потребляет всю собственную генерацию.')}</div>
       <h3 class="sub-h">Газотурбинные генераторы</h3>${table([{ t: 'ГТГ' }, { t: 'Тип' }, { t: 'Уст. мощность, МВт', v: true }], e.units.map(u => ({ cells: [esc(u.name), esc(u.type), fmt(u.cap, 1)] })).concat([{ cls: 'tot', cells: ['Итого', '', fmt(cap, 1)] }]))}`;
+      if (e.sld) html += `<h3 class="sub-h" data-nav="Упрощенная однолинейная схема">Упрощенная однолинейная схема электроснабжения ${esc(FS(k))}</h3><div class="panel">${enSld(e, { units: e.units, period: String(a.y), noFact: true, legNote: 'Выработка по отдельным ГТГ не учитывается — только по месторождению в целом.' })}<p class="note">Схема построена по составу генерации и потребления; номинальные напряжения и распределительная сеть не показаны. Наведите на генератор, чтобы увидеть тип и мощность.</p></div>`;
     }
     if (k === 'X') {
-      const cap = sum(e.gen.map(u => u.cap)), w = sum(e.gen.map(u => u.winter)), su = sum(e.gen.map(u => u.summer)), cons = sum(e.cons.map(c => c.cap));
-      html += kpis([{ l: 'Установленная мощность генерации', v: fmt(cap, 1), u: 'МВт', s: `${e.gen.length} агрегатов, наземная и морская части` },
-      { l: 'Фактическая мощность, зима', v: fmt(w, 1), u: 'МВт', s: `загрузка ${pct(w / cap, 0)}` }, { l: 'Фактическая мощность, лето', v: fmt(su, 1), u: 'МВт', s: `загрузка ${pct(su / cap, 0)}` },
-      { l: 'Установленная мощность потребителей', v: fmt(cons, 1), u: 'МВт', s: `${e.cons.length} групп потребителей` }]);
-      const cnt = {}; const lab = e.gen.map(u => { cnt[u.name] = (cnt[u.name] || 0) + 1; return `${u.name} №${cnt[u.name]}`; });
-      html += `<div class="grid2">${panel('Генерирующие агрегаты', 'МВт', chartBox({
+      const SITES = ['Наземная часть', 'Морская часть'];
+      const part = SITES.includes(sub('xPart')) ? sub('xPart') : 'all';
+      const cnt = {}; const labAll = e.gen.map(u => { cnt[u.name] = (cnt[u.name] || 0) + 1; return `${u.name} №${cnt[u.name]}`; });
+      const gi = e.gen.map((u, i) => i).filter(i => part === 'all' || e.gen[i].site === part);
+      const G = gi.map(i => e.gen[i]), lab = gi.map(i => labAll[i]);
+      const CS = e.cons.filter(c => part === 'all' || c.site === part);
+      const cap = sum(G.map(u => u.cap)), w = sum(G.map(u => u.winter)), su = sum(G.map(u => u.summer)), cons = sum(CS.map(c => c.cap));
+      html += `<div class="obj-sel"><span class="obj-sel-l">Выберите объект</span>${seg('xPart', [{ v: 'all', t: 'Все объекты' }, { v: 'Морская часть', t: 'Морская часть' }, { v: 'Наземная часть', t: 'Наземная часть' }], part, '')}</div>`;
+      html += kpis([{ l: 'Установленная мощность генерации', v: fmt(cap, 1), u: 'МВт', s: `${G.length} агрегатов, ${part === 'all' ? 'наземная и морская части' : part.toLowerCase()}` },
+      { l: 'Фактическая выработка, зима', v: fmt(w, 1), u: 'МВт·ч', s: `загрузка ${pct(w / cap, 0)}` }, { l: 'Фактическая выработка, лето', v: fmt(su, 1), u: 'МВт·ч', s: `загрузка ${pct(su / cap, 0)}` }]);
+      html += `<div class="grid2">${panel('Генерирующие агрегаты', 'МВт·ч; уст. мощность — МВт', chartBox({
         title: 'Генерация', cats: lab,
-        series: [{ name: 'Установленная', color: 'var(--c8)', hatch: true, values: e.gen.map(u => u.cap), unit: 'МВт' }, { name: 'Факт, зима', color: FC(k), values: e.gen.map(u => u.winter), unit: 'МВт' }, { name: 'Факт, лето', color: 'var(--c1)', values: e.gen.map(u => u.summer), unit: 'МВт' }],
-        tipTitle: (c, i) => `${e.gen[i].site} · ${c}`
+        series: [{ name: 'Установленная', color: 'var(--c8)', hatch: true, values: G.map(u => u.cap), unit: 'МВт' }, { name: 'Факт, зима', color: FC(k), values: G.map(u => u.winter), unit: 'МВт·ч' }, { name: 'Факт, лето', color: 'var(--c1)', values: G.map(u => u.summer), unit: 'МВт·ч' }],
+        tipTitle: (c, i) => `${G[i].site} · ${c}`
       }), 'Пустые значения — агрегат в этом сезоне не работал.')}
-      ${panel('Потребители', 'уст. мощность, МВт', ['Наземная часть', 'Морская часть'].map(site => `<p class="eyebrow" style="margin:6px 0 8px">${site}</p>` + hbars(e.cons.filter(c => c.site === site).sort((a, b) => (b.cap || 0) - (a.cap || 0)).map(c => ({ label: esc(c.name), bars: [{ v: c.cap, color: FC(k), text: c.cap == null ? '—' : fmt(c.cap, 2) }] })), { max: Math.max(...e.cons.map(c => c.cap || 0)) })).join('<div style="height:12px"></div>'))}</div>
-      <h3 class="sub-h">Генерация по агрегатам</h3>` + table([{ t: 'Часть' }, { t: 'Агрегат' }, { t: 'Уст. мощность', v: true }, { t: 'Факт зима', v: true }, { t: 'Факт лето', v: true }, { t: 'Резервная мощность', v: true }],
-        e.gen.map((u, i) => ({ cells: [esc(u.site), esc(lab[i]), fmt(u.cap, 2), u.winter == null ? null : fmt(u.winter, 2), u.summer == null ? null : fmt(u.summer, 2), fmt(u.reserve, 2)] })).concat([{ cls: 'tot', cells: ['Итого', '', fmt(cap, 1), fmt(w, 1), fmt(su, 1), ''] }]));
+      ${panel('Потребители', 'уст. мощность, МВт', SITES.filter(st => part === 'all' || st === part).map(site => `<p class="eyebrow" style="margin:6px 0 8px">${site}</p>` + hbars(CS.filter(c => c.site === site).sort((a, b) => (b.cap || 0) - (a.cap || 0)).map(c => ({ label: esc(c.name), bars: [{ v: c.cap, color: FC(k), text: c.cap == null ? '—' : fmt(c.cap, 2) }] })), { max: Math.max(...CS.map(c => c.cap || 0)) })).join('<div style="height:12px"></div>'))}</div>
+      <h3 class="sub-h">Генерация по агрегатам</h3>` + table([{ t: 'Часть' }, { t: 'Агрегат' }, { t: 'Уст. мощность, МВт', v: true }, { t: 'Факт зима, МВт·ч', v: true }, { t: 'Факт лето, МВт·ч', v: true }, { t: 'Резервная мощность, МВт', v: true }],
+        G.map((u, i) => ({ cells: [esc(u.site), esc(lab[i]), fmt(u.cap, 2), u.winter == null ? null : fmt(u.winter, 2), u.summer == null ? null : fmt(u.summer, 2), fmt(u.reserve, 2)] })).concat([{ cls: 'tot', cells: ['Итого', '', fmt(cap, 1), fmt(w, 1), fmt(su, 1), ''] }]));
+      if (e.sld) {
+        const sea = sub('xSeason', 'winter') === 'summer' ? 'summer' : 'winter';
+        const us = e.gen.map((u, i) => ({ name: labAll[i], cap: u.cap, fact: u[sea], site: u.site }));
+        const clip = part === 'Наземная часть' ? [0, 784] : part === 'Морская часть' ? [784, 1200] : null;
+        html += `<div class="sub-h-row"><h3 class="sub-h" data-nav="Упрощенная однолинейная схема">Упрощенная однолинейная схема электроснабжения ${esc(FS(k))}${part === 'all' ? '' : ', ' + part.toLowerCase()}</h3>${seg('xSeason', [{ v: 'winter', t: 'Зима' }, { v: 'summer', t: 'Лето' }], sea)}</div><div class="panel">${enSld(e, { units: us, clip, period: sea === 'winter' ? 'зимний режим' : 'летний режим', offLabel: 'не работал в этом режиме', short: true })}<p class="note">Схема построена по составу генерации и потребителей; номинальные напряжения, трансформаторы${part === 'all' ? ' и связи между наземной и морской частями' : ''} не показаны. Под потребителями — установленная мощность. ГТГ — газотурбинный генератор; ПТГ — паротурбинный генератор.</p></div>`;
+      }
     }
     if (k === 'Y') {
       const li = e.months.length - 1;
       const plant = e.plants.includes(sub('yPlant')) ? sub('yPlant') : 'all';
-      const pick = key => plant === 'all' ? e.months.map((_, i) => sum(e.plants.map(p => e.byPlant[p][key][i]))) : e.byPlant[plant][key];
+      const PL = plant === 'all' ? e.plants : [plant];
+      const CMAP = { 'КТЛ': ['КТЛ'], 'ЗВП': ['ЗВП', 'ЗСГВП'], 'ЗТП': ['ЗТП', 'ЗСГТП'] };
+      const CJ = e.cons.cols.map((c, j) => j).filter(j => plant === 'all' || (CMAP[plant] || []).includes(e.cons.cols[j]));
+      const UL = e.unitsLast.filter(u => plant === 'all' || u.plant === plant);
+      const pick = key => e.months.map((_, i) => sum(PL.map(p => e.byPlant[p][key][i])));
       const cap = pick('cap'), gen = pick('gen');
-      const consTot = e.cons.rows.map(r => sum(r.v));
-      html += kpis([{ l: `Установленная мощность, ${mLong(e.lastMonth)}`, v: fmt(sum(e.plants.map(p => e.byPlant[p].cap[li])), 0), u: 'МВт', s: `${e.unitsLast.length} турбогенераторов на ${e.plants.length} заводах` },
-      { l: 'Фактическая выработка', v: fmt(sum(e.plants.map(p => e.byPlant[p].gen[li])), 0), u: 'МВт', s: `загрузка ${pct(sum(e.plants.map(p => e.byPlant[p].gen[li])) / sum(e.plants.map(p => e.byPlant[p].cap[li])), 0)}` },
-      { l: 'Потребление (все объекты)', v: fmt(consTot[consTot.length - 1], 0), u: 'МВт', s: mLong(e.cons.rows[e.cons.rows.length - 1].m) },
-      { l: 'Средняя загрузка за период', v: pct(sum(e.months.map((_, i) => sum(e.plants.map(p => e.byPlant[p].gen[i])))) / sum(e.months.map((_, i) => sum(e.plants.map(p => e.byPlant[p].cap[i]))))), s: `${mLabel(e.months[0])} – ${mLabel(e.lastMonth)}` }]);
-      html += `<div class="grid2">${panel('Генерация: выработка турбогенераторов', 'МВт', chartBox({
+      const consTot = e.cons.rows.map(r => sum(CJ.map(j => r.v[j])));
+      const genLast = gen[li], capLast = cap[li], cLast = consTot[consTot.length - 1];
+      const lbl = plant === 'all' ? 'все объекты' : plant;
+      html += `<div class="obj-sel"><span class="obj-sel-l">Выберите объект</span>${seg('yPlant', [{ v: 'all', t: 'Все объекты' }].concat(e.plants.map(p => ({ v: p, t: p }))), plant, '')}</div>`;
+      html += kpis([{ l: 'Установленная мощность', v: fmt(capLast, 0), u: 'МВт', s: plant === 'all' ? `${UL.length} газотурбинных генераторов на ${e.plants.length} заводах` : `${UL.length} газотурбинных генераторов, ${plant}` },
+      { l: 'Фактическая выработка', v: fmt(genLast, 1), u: 'МВт·ч', s: `загрузка ${pct(genLast / capLast, 0)}` },
+      { l: `Потребление (${lbl})`, v: fmt(cLast, 1), u: 'МВт·ч', s: `баланс выработки и потребления: ${(genLast - cLast >= 0 ? '+' : '') + fmt(genLast - cLast, 1)} МВт·ч` },
+      { l: 'Средняя загрузка за период', v: pct(sum(gen) / sum(cap)), s: `${mLabel(e.months[0])} – ${mLabel(e.lastMonth)}` }]);
+      html += `<h3 class="sub-h">Генерация и потребление</h3><div class="grid2">${panel('Генерация: выработка', 'МВт·ч; уст. мощность — МВт', chartBox({
         title: 'Выработка', cats: e.months,
-        series: [{ name: 'Установленная мощность', color: 'var(--c8)', hatch: true, values: cap, unit: 'МВт', stack: 'cap' }, { name: 'Фактическая выработка', color: FC(k), values: gen, unit: 'МВт', stack: 'gen' }],
+        series: [{ name: 'Установленная мощность', color: 'var(--c8)', hatch: true, values: cap, unit: 'МВт', stack: 'cap' }, { name: 'Фактическая выработка', color: FC(k), values: gen, unit: 'МВт·ч', stack: 'gen' }],
         xFmt: c => mLabel(c), tipTitle: c => mLong(c), tipExtra: i => cap[i] ? `<div class="r"><span>Загрузка</span><span>${pct(gen[i] / cap[i], 0)}</span></div>` : ''
-      }), 'Сумма по турбогенераторам выбранного объекта. Потребление показано отдельно, на соседнем графике.',
-        seg('yPlant', [{ v: 'all', t: 'Все объекты' }].concat(e.plants.map(p => ({ v: p, t: p }))), plant))}
-      ${panel('Потребление электроэнергии по объектам', 'МВт', chartBox({
+      }), plant === 'all' ? 'Сумма по газотурбинным генераторам всех заводов.' : `Сумма по газотурбинным генераторам завода ${plant}.`)}
+      ${panel('Потребление электроэнергии по объектам', 'МВт·ч', chartBox({
           title: 'Потребление', cats: e.cons.rows.map(r => r.m),
-          series: e.cons.cols.map((c, j) => ({ name: c, color: PAL[j], values: e.cons.rows.map(r => r.v[j]), unit: 'МВт', stack: 's' })),
-          xFmt: c => mLabel(c), tipTitle: c => mLong(c), tipExtra: i => `<div class="r"><span>Всего</span><span>${fmt(consTot[i])} МВт</span></div>`
-        }))}</div>`;
-      html += `<h3 class="sub-h">Турбогенераторы, ${mLong(e.lastMonth)}</h3>` + table([{ t: 'Объект' }, { t: 'Участок' }, { t: 'Агрегат' }, { t: 'Уст. мощность, МВт', v: true }, { t: 'Факт, МВт', v: true }, { t: 'Загрузка', v: true }],
-        e.unitsLast.map(u => ({ cells: [esc(u.plant), esc(u.site), esc(u.name), fmt(u.cap, 2), fmt(u.fact, 1), pct(u.fact / u.cap, 0)] })));
-      html += `<p class="note">Данные по ${e.rawRows} агрегатам сведены по заводам и месяцам.</p>`;
+          series: CJ.map(j => ({ name: enCons(e, e.cons.cols[j]), color: PAL[j], values: e.cons.rows.map(r => r.v[j]), unit: 'МВт·ч', stack: 's' })),
+          xFmt: c => mLabel(c), tipTitle: c => mLong(c), tipExtra: i => `<div class="r"><span>Всего</span><span>${fmt(consTot[i], 1)} МВт·ч</span></div>`
+        }), plant === 'all' ? '' : `Потребители завода ${plant}: ${CJ.map(j => enCons(e, e.cons.cols[j])).join(', ')}. Промысловые объекты показаны только в режиме «Все объекты».`)}</div>`;
+      const cm = e.cons.rows.map(r => r.m), mm = e.months.filter(m => cm.includes(m));
+      const selM = mm.includes(sub('enMonth')) ? sub('enMonth') : e.lastMonth, mi = e.months.indexOf(selM);
+      const isLast = selM === e.lastMonth;
+      const siteOf = { 'КТЛ': 'ГТС-1 + ГТС-2', 'ЗВП': 'ГТС-3', 'ЗТП': 'ГТС-4' };
+      const bySite = isLast
+        ? [...new Set(UL.map(u => u.site))].map(st => { const us = UL.filter(u => u.site === st); return { st, plant: us[0].plant, cap: sum(us.map(u => u.cap)), fact: sum(us.map(u => u.fact)) }; })
+        : PL.map(p => ({ st: siteOf[p] || p, plant: p, cap: e.byPlant[p].cap[mi], fact: e.byPlant[p].gen[mi] }));
+      const genM = gen[mi];
+      const cRow = e.cons.rows.find(r => r.m === selM);
+      const cSum = cRow ? sum(CJ.map(j => cRow.v[j])) : 0;
+      const mk = u => { const n = enNote(e, u.name); return u.name + (n ? n.mark : ''); };
+      const mSel = `<label class="ysel"><span>Месяц</span><select data-sel="enMonth">${mm.slice().reverse().map(m => `<option value="${m}"${m === selM ? ' selected' : ''}>${mLong(m)}</option>`).join('')}</select></label>`;
+      html += `<div class="sub-h-row"><h3 class="sub-h">Выработка по ГТС, ${mLong(selM)}</h3>${mSel}</div><div class="grid2">${panel('Выработка по газотурбинным станциям', 'МВт·ч; уст. мощность — МВт', chartBox({
+        title: 'ГТС', cats: bySite.map(x => x.st),
+        series: [{ name: 'Установленная мощность', color: 'var(--c8)', hatch: true, values: bySite.map(x => x.cap), unit: 'МВт' }, { name: 'Фактическая выработка', color: FC(k), values: bySite.map(x => x.fact), unit: 'МВт·ч' }],
+        tipTitle: (c, i) => `${c} · ${bySite[i].plant}`, tipExtra: i => bySite[i].cap ? `<div class="r"><span>Загрузка</span><span>${pct(bySite[i].fact / bySite[i].cap, 0)}</span></div>` : ''
+      }), isLast ? bySite.map(x => `${x.st} — ${x.plant}`).join('; ') + '.' : (PL.includes('КТЛ') ? `ГТС-1 и ГТС-2 (оба — КТЛ) показаны вместе: раздельные данные по ним есть только за ${mLong(e.lastMonth)}.` : bySite.map(x => `${x.st} — ${x.plant}`).join('; ') + '.'))}
+      ${panel(`Нагрузка по потребителям, ${mLong(selM)}`, 'МВт·ч', cRow ? donut(CJ.map(j => ({ label: enCons(e, e.cons.cols[j]), v: cRow.v[j], color: PAL[j], text: `${fmt(cRow.v[j], 1)} МВт·ч` })), { v: fmt(cSum, 1), l: 'МВт·ч всего' }) : '<div class="empty-note">Нет данных за этот месяц</div>', cRow ? `Выработка ${fmt(genM, 1)} МВт·ч, потребление ${fmt(cSum, 1)} МВт·ч; баланс ${(genM - cSum >= 0 ? '+' : '') + fmt(genM - cSum, 1)} МВт·ч.` : '')}</div>`;
+      const NT = (e.notes || []).filter(n => UL.some(u => enNote(e, u.name) === n));
+      html += `<h3 class="sub-h" data-nav="Газотурбинные генераторы">Газотурбинные генераторы ${esc(UL[0].name)} … ${esc(UL[UL.length - 1].name)}, ${mLong(e.lastMonth)}</h3>`;
+      html += panel(`Выработка газотурбинных генераторов`, 'МВт·ч; уст. мощность — МВт', chartBox({
+        title: 'ТГ', cats: UL.map(mk),
+        series: [{ name: 'Установленная мощность', color: 'var(--c8)', hatch: true, values: UL.map(u => u.cap), unit: 'МВт' }, { name: 'Фактическая выработка', color: FC(k), values: UL.map(u => u.fact), unit: 'МВт·ч' }],
+        tipTitle: (c, i) => `${UL[i].name} · ${UL[i].site}`, tipExtra: i => { const n = enNote(e, UL[i].name); return (UL[i].cap ? `<div class="r"><span>Загрузка</span><span>${pct(UL[i].fact / UL[i].cap, 0)}</span></div>` : '') + (n ? `<div style="max-width:240px;white-space:normal;margin-top:4px">${esc(n.t)}</div>` : ''); }
+      }), NT.map(n => `${n.mark} ${esc(n.t)}`).join('<br>') + (isLast ? '' : `${NT.length ? '<br>' : ''}По отдельным газотурбинным генераторам данные есть только за ${mLong(e.lastMonth)}.`));
+      html += '<div style="margin-top:16px"></div>' + table([{ t: 'Объект' }, { t: 'Участок' }, { t: 'ГТГ' }, { t: 'Уст. мощность, МВт', v: true }, { t: 'Факт, МВт·ч', v: true }, { t: 'Загрузка', v: true }, { t: 'Состояние' }],
+        UL.map(u => { const n = enNote(e, u.name); return { cells: [esc(u.plant), esc(u.site), esc(u.name) + (n ? `<sup class="en-mk">${n.mark}</sup>` : ''), fmt(u.cap, 2), fmt(u.fact, 1), pct(u.fact / u.cap, 0), n ? `<span class="pill ${n.status === 'fault' ? 'bad' : 'neutral'}">${n.status === 'fault' ? 'авария' : 'выведен'}</span>` : u.fact ? '<span class="pill good">в работе</span>' : '<span class="pill neutral">остановлен</span>'] }; }));
+      html += `<p class="note">Помесячные данные по газотурбинным генераторам (${e.rawRows} записей) сведены по заводам.</p>`;
+      if (e.sld) html += `<h3 class="sub-h" data-nav="Упрощенная однолинейная схема">Упрощенная однолинейная схема электроснабжения объектов ${esc(FS(k))}</h3><div class="panel">${enSld(e, { focus: plant === 'all' ? null : plant })}<p class="note">${plant === 'all' ? '' : `Генераторы завода ${plant} выделены, остальные приглушены. `}Наведите на генератор, чтобы увидеть мощность, выработку и состояние. ВЛ — воздушная линия; ГТС — газотурбинная станция.</p></div>`;
     }
     if (k === 'Z') {
       const cap = sum(e.units.map(u => u.cap)), f = sum(e.units.map(u => u.fact));
@@ -896,46 +1018,47 @@ RENDER.en = {
       const genIdx = C.map((c, i) => c.startsWith('ГТГ') ? i : -1).filter(i => i >= 0);
       const expIdx = C.map((c, i) => c.startsWith('Экспорт') ? i : -1).filter(i => i >= 0);
       const conIdx = C.map((c, i) => !genIdx.includes(i) && !expIdx.includes(i) ? i : -1).filter(i => i >= 0);
-      html += kpis([{ l: 'Установленная мощность', v: fmt(cap, 1), u: 'МВт', s: `${e.units.length} ГТГ, ${esc(e.units[0].type)}` }, { l: 'Фактическая мощность', v: fmt(f, 1), u: 'МВт', s: `загрузка ${pct(f / cap, 0)}` },
-      { l: `Средняя выработка, ${mLabel(R[0].m)}–${mLabel(R[R.length - 1].m)}`, v: fmt(avg(R.map(r => sum(genIdx.map(i => r.v[i])))), 1), u: 'МВт' },
-      { l: 'Средний экспорт электроэнергии', v: fmt(avg(R.map(r => sum(expIdx.map(i => r.v[i])))), 1), u: 'МВт', s: C.filter((c, i) => expIdx.includes(i)).map(c => c.replace('Экспорт ', '')).join(', ') }]);
+      html += kpis([{ l: 'Установленная мощность', v: fmt(cap, 1), u: 'МВт', s: `${e.units.length} ГТГ, ${esc(e.units[0].type)}` }, { l: 'Фактическая выработка', v: fmt(f, 1), u: 'МВт·ч', s: `загрузка ${pct(f / cap, 0)}` },
+      { l: `Средняя выработка, ${mLabel(R[0].m)}–${mLabel(R[R.length - 1].m)}`, v: fmt(avg(R.map(r => sum(genIdx.map(i => r.v[i])))), 1), u: 'МВт·ч' },
+      { l: 'Средний экспорт электроэнергии', v: fmt(avg(R.map(r => sum(expIdx.map(i => r.v[i])))), 1), u: 'МВт·ч', s: C.filter((c, i) => expIdx.includes(i)).map(c => c.replace('Экспорт ', '')).join(', ') }]);
       const cats = R.map(r => r.m);
       const tot = idx => R.map(r => sum(idx.map(i => r.v[i])));
       const G = tot(genIdx), U = tot(conIdx), X = tot(expIdx);
       const opt = extra => Object.assign({ cats, xFmt: c => mLabel(c), tipTitle: c => mLong(c) }, extra);
-      html += `<h3 class="sub-h">Генерация</h3><div class="grid2">${panel('Выработка по ГТГ', 'МВт', chartBox(opt({
-        title: 'Выработка', series: genIdx.map((i, j) => ({ name: C[i], color: PAL[j], values: R.map(r => r.v[i]), unit: 'МВт', stack: 's' })),
+      html += `<h3 class="sub-h">Генерация</h3><div class="grid2">${panel('Выработка по ГТГ', 'МВт·ч; уст. мощность — МВт', chartBox(opt({
+        title: 'Выработка', series: genIdx.map((i, j) => ({ name: C[i], color: PAL[j], values: R.map(r => r.v[i]), unit: 'МВт·ч', stack: 's' })),
         refs: [{ v: cap, label: `Установленная ${fmt(cap, 0)} МВт` }], yMax: cap * 1.08,
-        tipExtra: i => `<div class="r"><span>Всего</span><span>${fmt(G[i], 1)} МВт</span></div>`
+        tipExtra: i => `<div class="r"><span>Всего</span><span>${fmt(G[i], 1)} МВт·ч</span></div>`
       })), 'Данные есть за январь–апрель 2023.')}
-      ${panel('Газотурбинные генераторы: мощность', 'МВт', chartBox({
+      ${panel('Газотурбинные генераторы: мощность и выработка', 'МВт·ч; уст. мощность — МВт', chartBox({
           title: 'ГТГ', cats: e.units.map(u => u.name),
-          series: [{ name: 'Установленная', color: 'var(--c8)', hatch: true, values: e.units.map(u => u.cap), unit: 'МВт' }, { name: 'Фактическая', color: FC(k), values: e.units.map(u => u.fact), unit: 'МВт' }],
+          series: [{ name: 'Установленная', color: 'var(--c8)', hatch: true, values: e.units.map(u => u.cap), unit: 'МВт' }, { name: 'Фактическая выработка', color: FC(k), values: e.units.map(u => u.fact), unit: 'МВт·ч' }],
           tipExtra: i => `<div class="r"><span>Загрузка</span><span>${pct(e.units[i].fact / e.units[i].cap, 0)}</span></div>`
         }))}</div>
-      <h3 class="sub-h">Потребление и экспорт</h3><div class="grid2">${panel('Потребление по объектам', 'МВт', chartBox(opt({
-        title: 'Потребление', series: conIdx.map((i, j) => ({ name: C[i], color: ['var(--c7)', 'var(--c6)', 'var(--c5)', 'var(--c4)', 'var(--c1)'][j], values: R.map(r => r.v[i]), unit: 'МВт', stack: 's' })),
-        tipExtra: i => `<div class="r"><span>Всего</span><span>${fmt(U[i], 1)} МВт</span></div>`
+      <h3 class="sub-h">Потребление и экспорт</h3><div class="grid2">${panel('Потребление по объектам', 'МВт·ч', chartBox(opt({
+        title: 'Потребление', series: conIdx.map((i, j) => ({ name: C[i], color: ['var(--c7)', 'var(--c6)', 'var(--c5)', 'var(--c4)', 'var(--c1)'][j], values: R.map(r => r.v[i]), unit: 'МВт·ч', stack: 's' })),
+        tipExtra: i => `<div class="r"><span>Всего</span><span>${fmt(U[i], 1)} МВт·ч</span></div>`
       })), 'Собственные нужды: КПК, УКПГ-2, УКПГ-3, промысловые объекты и прочие.')}
-      ${panel('Экспорт электроэнергии', 'МВт', chartBox(opt({
-          title: 'Экспорт', series: expIdx.map((i, j) => ({ name: C[i].replace('Экспорт ', ''), color: ['var(--c2)', 'var(--c3)'][j], values: R.map(r => r.v[i]), unit: 'МВт', stack: 's' })),
-          tipExtra: i => `<div class="r"><span>Всего</span><span>${fmt(X[i], 1)} МВт</span></div>`
+      ${panel('Экспорт электроэнергии', 'МВт·ч', chartBox(opt({
+          title: 'Экспорт', series: expIdx.map((i, j) => ({ name: C[i].replace('Экспорт ', ''), color: ['var(--c2)', 'var(--c3)'][j], values: R.map(r => r.v[i]), unit: 'МВт·ч', stack: 's' })),
+          tipExtra: i => `<div class="r"><span>Всего</span><span>${fmt(X[i], 1)} МВт·ч</span></div>`
         })), 'Поставки внешним потребителям.')}</div>
-      <h3 class="sub-h">Баланс по месяцам</h3>${table([{ t: 'Месяц' }, { t: 'Выработка', v: true }, { t: 'Потребление', v: true }, { t: 'Экспорт', v: true }, { t: 'Выработка − (потребление + экспорт)', v: true }],
+      <h3 class="sub-h">Баланс по месяцам</h3>${table([{ t: 'Месяц' }, { t: 'Выработка, МВт·ч', v: true }, { t: 'Потребление, МВт·ч', v: true }, { t: 'Экспорт, МВт·ч', v: true }, { t: 'Выработка − (потребление + экспорт)', v: true }],
         R.map((r, i) => ({ cells: [mLong(r.m), fmt(G[i], 1), fmt(U[i], 1), fmt(X[i], 1), fmt(Math.abs(G[i] - U[i] - X[i]) < 0.05 ? 0 : G[i] - U[i] - X[i], 1)] })))}
-      <p class="note">МВт. В январе–феврале выработка полностью распределена между потреблением и экспортом. В марте–апреле около 15–16 МВт выработки не отнесены ни к потреблению, ни к экспорту.</p>`;
+      <p class="note">Значения — МВт·ч в час (среднечасовая выработка за месяц). В январе–феврале выработка полностью распределена между потреблением и экспортом. В марте–апреле около 15–16 МВт·ч выработки не отнесены ни к потреблению, ни к экспорту.</p>`;
+      if (e.sld) html += `<h3 class="sub-h" data-nav="Упрощенная однолинейная схема">Упрощенная однолинейная схема электроснабжения ${esc(FS(k))}</h3><div class="panel">${enSld(e, { units: e.units, period: 'средняя фактическая' })}<p class="note">Наведите на генератор, чтобы увидеть установленную и фактическую мощность. ГТЭС — газотурбинная электростанция; КПК — Карачаганакский перерабатывающий комплекс; ВЛ — воздушная линия.</p></div>`;
     }
     const src = { D: 'книга D, листы «Энергетика», «Энергетика 1».', X: 'книга X, листы «Генерация», «Потребление».', Y: 'книга Y, листы «Энергетика», «Энергетика 1».', Z: 'книга Z, листы «Энергетика» (выработка), «Потребление 2», «Экспорт 3», «Энергетика 1».' }[k];
-    return `<section>${secHead(`Энергетика · ${FN(k)}`, 'Генерация (выработка) и потребление электроэнергии показаны раздельно.')}${html}${srcNote(src)}</section>`;
+    return `<section>${secHead(`Электроэнергетика · ${FN(k)}`, k === 'Z' ? 'Генерация (выработка), потребление и экспорт электроэнергии. Выработка, потребление и экспорт — в МВт·ч, то есть объём электроэнергии за 1 час; установленная мощность агрегатов — в МВт.' : 'Генерация (выработка) и потребление электроэнергии. Выработка и потребление — в МВт·ч, то есть объём электроэнергии за 1 час; установленная мощность агрегатов — в МВт.')}${html}${srcNote(src)}</section>`;
   },
   all() {
     const E = FIELDS.map(k => ({ k, ...enSummary(k) }));
-    const rows = E.map(x => ({ label: `<span class="dot" style="background:${FC(x.k)};margin-right:6px"></span>${FS(x.k)}`, bars: [{ v: x.cap, color: 'var(--c8)', text: fmt(x.cap, 0) + ' МВт' }, { v: x.out, color: FC(x.k), text: fmt(x.out, 0) + ' МВт' }] }));
+    const rows = E.map(x => ({ label: `<span class="dot" style="background:${FC(x.k)};margin-right:6px"></span>${FS(x.k)}`, bars: [{ v: x.cap, color: 'var(--c8)', text: fmt(x.cap, 0) + ' МВт' }, { v: x.out, color: FC(x.k), text: fmt(x.out, 0) + ' МВт·ч' }] }));
     const load = hbars(E.map(x => ({ label: `<span class="dot" style="background:${FC(x.k)};margin-right:6px"></span>${FS(x.k)} <span class="txt" style="display:inline">(${esc(x.label)})</span>`, bars: [{ v: x.out / x.cap, color: FC(x.k), text: pct(x.out / x.cap, 0) }] })), { max: 1 });
-    return `<section>${secHead('Энергетика · все месторождения', 'Установленная и фактическая мощность собственной генерации. Периоды данных разные — они указаны в подписях.')}
-      ${kpis([{ l: 'Установленная мощность, всего', v: fmt(sum(E.map(x => x.cap)), 0), u: 'МВт', s: 'четыре месторождения' }, { l: 'Фактическая мощность, всего', v: fmt(sum(E.map(x => x.out)), 0), u: 'МВт', s: 'по последним доступным данным' }])}
-      <div class="grid2">${panel('Установленная и фактическая мощность', 'МВт', hbLegend([{ name: 'Установленная', color: 'var(--c8)' }, { name: 'Фактическая', color: 'var(--c7)' }]) + hbars(rows))}
-      ${panel('Загрузка генерации', 'факт / установленная', load, 'D — среднегодовая генерация 2026; X — зимний режим; Y — последний месяц; Z — фактическая мощность ГТГ.')}</div>
+    return `<section>${secHead('Электроэнергетика · все месторождения', 'Установленная мощность собственной генерации (МВт) и фактическая выработка (МВт·ч — объём электроэнергии за 1 час). Периоды данных разные — они указаны в подписях.')}
+      ${kpis([{ l: 'Установленная мощность, всего', v: fmt(sum(E.map(x => x.cap)), 0), u: 'МВт', s: 'четыре месторождения' }, { l: 'Фактическая выработка, всего', v: fmt(sum(E.map(x => x.out)), 0), u: 'МВт·ч', s: 'по последним доступным данным' }])}
+      <div class="grid2">${panel('Установленная мощность и фактическая выработка', 'МВт / МВт·ч', hbLegend([{ name: 'Установленная мощность, МВт', color: 'var(--c8)' }, { name: 'Фактическая выработка, МВт·ч', color: 'var(--c7)' }]) + hbars(rows))}
+      ${panel('Загрузка генерации', 'факт / установленная', load, 'D — среднегодовая генерация 2026; X — зимний режим; Y — последний месяц; Z — фактическая выработка ГТГ.')}</div>
       ${EXTRA.enAll()}${srcNote('листы «Энергетика» каждой книги.')}</section>`;
   }
 };
@@ -2108,7 +2231,7 @@ function refPanel(sec, k) {
 /* ============================================================
    Выгрузка справки: PDF (печать) и PowerPoint (редактируемые таблицы и диаграммы)
    ============================================================ */
-const EXP_SECTIONS = [['ov', 'Общие данные'], ['geo', 'Геология'], ['prod', 'Добыча'], ['mk', 'Маркетинг'], ['en', 'Энергетика'], ['eco', 'Экология'], ['rel', 'Надёжность'], ['lc', 'Местное содержание'], ['econ', 'Экономика'], ['proj', 'Проекты']];
+const EXP_SECTIONS = [['ov', 'Общие данные'], ['geo', 'Геология'], ['prod', 'Добыча'], ['mk', 'Маркетинг'], ['en', 'Электроэнергетика'], ['eco', 'Экология'], ['rel', 'Надёжность'], ['lc', 'Местное содержание'], ['econ', 'Экономика'], ['proj', 'Проекты']];
 const FIELD_HEX = { Y: '0D3B66', X: '2C7BB6', Z: '6FB1DC', D: '8A9BB0' };
 const asofText = () => { const l = LAST_COMMON(); return `${MNF[+l.slice(5) - 1]} ${l.slice(0, 4)}`; };
 
@@ -2270,8 +2393,8 @@ async function exportPPTX(secs) {
       });
     }
     if (t === 'en') {
-      const sl = tSlide('Энергетика: мощность собственной генерации', 'МВт');
-      tbl(sl, ['Месторождение', 'Установленная', 'Фактическая', 'Загрузка', 'Период / режим'],
+      const sl = tSlide('Электроэнергетика: собственная генерация', 'установленная мощность — МВт; выработка — МВт·ч');
+      tbl(sl, ['Месторождение', 'Установленная, МВт', 'Выработка, МВт·ч', 'Загрузка', 'Период / режим'],
         FIELDS.map((k, i) => { const e = enSummary(k); return [names[i], fmt(e.cap, 1), fmt(e.out, 1), P(e.out / e.cap), e.label]; }), { colW: [4.33, 1.8, 1.8, 1.6, 2.8] });
       note(sl, 'Периоды данных разные: они указаны в последнем столбце.');
     }
