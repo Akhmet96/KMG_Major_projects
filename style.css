@@ -1136,3 +1136,9 @@ tr.ind-pct td{font-style:italic;color:var(--ink-2)}
 .obj-sel{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;margin:0 0 16px}
 .obj-sel-l{font:700 13px var(--body);color:var(--ink)}
 .sl-gen.dim{opacity:.28}
+
+.brand-logo{height:56px;padding:5px 10px}
+@media (max-width:560px){.brand-logo{height:38px;padding:3px 6px}}
+.brand-logo{height:70px;padding:4px 8px}
+@media (max-width:900px){.brand-logo{height:52px}}
+@media (max-width:560px){.brand-logo{height:40px;padding:3px 6px}}
