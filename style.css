@@ -1142,3 +1142,95 @@ tr.ind-pct td{font-style:italic;color:var(--ink-2)}
 .brand-logo{height:70px;padding:4px 8px}
 @media (max-width:900px){.brand-logo{height:52px}}
 @media (max-width:560px){.brand-logo{height:40px;padding:3px 6px}}
+
+/* технологические схемы — в стиле схемы раздела продукции */
+.tf-scroll{overflow-x:auto;background:var(--surface);border-radius:12px;padding:8px}
+.tf{display:block;width:100%;min-width:calc(var(--tfw) * .72px);max-width:calc(var(--tfw) * 1.05px);margin:0 auto;height:auto;font-family:var(--body)}
+.tf-n{animation:scIn .55s cubic-bezier(.2,.8,.2,1) backwards;transform-box:fill-box;transform-origin:center;outline:none;transition:opacity .25s}
+.tf-n rect{stroke-width:1.2;transition:filter .2s,stroke-width .2s}
+.tf-t{font:600 12px var(--body);fill:var(--ink)}
+.tf-u rect{fill:color-mix(in srgb,#5b86b5 20%,var(--surface));stroke:color-mix(in srgb,var(--ink-2) 70%,transparent)}
+.tf-plant rect{fill:color-mix(in srgb,#00aeef 22%,var(--surface));stroke:#0088c4;stroke-width:1.8}.tf-plant .tf-t{font-weight:800;font-size:13px}
+.tf-ctf rect{fill:color-mix(in srgb,#4caf6a 30%,var(--surface));stroke:#3b8f55}
+.tf-gzu rect{fill:color-mix(in srgb,#f0a23c 34%,var(--surface));stroke:#c98426}
+.tf-ic{fill:color-mix(in srgb,#5b86b5 20%,var(--surface));stroke:var(--ink-2);stroke-width:1.4}.tf-icx{stroke:var(--ink-2);stroke-width:1.2}
+.tf-n:hover .tf-ic,.tf-n.on .tf-ic{filter:drop-shadow(0 4px 10px rgb(0 0 0/.22));stroke-width:2.2}
+.tf-n:hover rect,.tf-n:focus rect,.tf-n.on rect{filter:drop-shadow(0 4px 10px rgb(0 0 0/.22));stroke-width:2.2}
+.tf-n[data-tgo]{cursor:pointer}
+.tf-ln{fill:none;stroke-width:2;stroke-linejoin:round;animation:fxDraw 1s cubic-bezier(.45,.05,.25,1) backwards;transition:opacity .25s,stroke-width .2s}
+.tf-ln.on{stroke-width:3}
+.tf-wrap.focus .tf-n:not(.on){opacity:.28}
+.tf-wrap.focus .tf-ln:not(.on){opacity:.15}
+.tf-lab{font:500 11.5px var(--body);fill:var(--ink-2);paint-order:stroke;stroke:var(--surface);stroke-width:3px;stroke-linejoin:round}
+.tf-link{fill:#0088c4;font-weight:700;text-decoration:underline}
+.tf-go{cursor:pointer;outline:none}
+.tf-ln.tf-go:hover{stroke-width:3.4}
+.tf-oil{stroke:var(--ink);fill:var(--ink)}.tf-gas{stroke:#e03c31;fill:#e03c31}.tf-s{stroke:#1a8f7a;fill:#1a8f7a}.tf-w{stroke:#3a8fd8;fill:#3a8fd8}
+.tf-off{stroke:#f0a32a;fill:#f0a32a}.tf-cond{stroke:#7d8794;fill:#7d8794}.tf-drain{stroke:#6bb34a;fill:#6bb34a}
+polyline.tf-ln{fill:none}.tf-ah{stroke:none}
+.tf-hint{font-size:12px;color:var(--muted)}
+.tf-leg{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:10px;font-size:12px;color:var(--muted)}
+.tf-leg span{display:inline-flex;align-items:center;gap:7px}.tf-leg i{display:inline-block;width:22px;height:0;border-top:3px solid currentColor}
+.tf-leg i.tf-oil{color:var(--ink)}.tf-leg i.tf-gas{color:#e03c31}.tf-leg i.tf-s{color:#1a8f7a}.tf-leg i.tf-w{color:#3a8fd8}.tf-leg i.tf-off{color:#f0a32a}.tf-leg i.tf-cond{color:#7d8794}.tf-leg i.tf-drain{color:#6bb34a}
+.panel:fullscreen{overflow:auto;padding:24px;background:var(--bg,var(--surface))}
+.panel:fullscreen .tf{max-width:none}
+@media (prefers-reduced-motion:reduce){.tf-n,.tf-ln{animation:none!important}}
+.btn-link{border:1px solid var(--rule);background:var(--surface);border-radius:8px;padding:7px 12px;font:600 13px var(--body);color:var(--accent,#0088c4);cursor:pointer}
+@media (min-width:1100px){.tabs{gap:0}.tabs button{font-size:11.8px;padding-inline:5px;letter-spacing:0}}
+@media (min-width:1100px) and (max-width:1320px){.tabs button{font-size:10.4px;padding-inline:2px}}
+
+/* геология: описание и фонд скважин */
+.gi-lead{margin:0 0 12px;font-size:14px;line-height:1.5;color:var(--ink)}
+.gi-doc{margin:0 0 14px;padding:10px 12px;border-left:3px solid #00aeef;background:var(--surface-2);border-radius:0 8px 8px 0;font-size:13.5px;font-weight:600;color:var(--ink)}
+.gi-doc span{display:block;font-weight:500;font-size:12px;color:var(--muted);margin-bottom:2px}
+.gi-h{margin:14px 0 8px;font:700 11.5px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.gi-obj{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.gi-obj li{display:grid;grid-template-columns:92px 1fr;gap:10px;font-size:13px;line-height:1.4;color:var(--ink-2)}
+.gi-obj b{color:var(--ink)}
+.gi-facts{margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.gi-facts div{background:var(--surface-2);border-radius:8px;padding:8px 10px}
+.gi-facts dt{font-size:11.5px;color:var(--muted);line-height:1.3}
+.gi-facts dd{margin:3px 0 0;font:800 16px var(--display);color:var(--ink)}
+.gi-ph{display:grid;gap:8px}
+.gi-phi{background:var(--surface-2);border-radius:8px;padding:8px 12px}
+.gi-pht{display:flex;gap:10px;align-items:baseline}.gi-pht b{font:800 14px var(--display);color:var(--ink)}.gi-pht span{font-size:12px;color:var(--muted)}
+.gi-phi ul{margin:4px 0 0;padding-left:18px;font-size:13px;color:var(--ink-2);line-height:1.45}
+.geo-imgs{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.geo-img{margin:0;min-width:120px}
+.geo-img img{display:block;width:100%;border-radius:8px;cursor:zoom-in;background:#fff;border:1px solid var(--rule)}
+.geo-img figcaption{margin-top:6px;font-size:12px;color:var(--muted);line-height:1.35}
+.geo-notes h4{margin:0 0 6px;font:700 13px var(--body);color:var(--ink)}
+.geo-notes ul{margin:0;padding-left:18px;font-size:13px;color:var(--ink-2);line-height:1.5}
+.geo-notes{margin-top:16px}
+
+/* умный поиск */
+.ks-btn{display:inline-flex;align-items:center;gap:6px}
+.ks-btn svg,.ks-top svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+.ks-btn kbd{font:600 10px var(--body);border:1px solid currentColor;border-radius:4px;padding:1px 4px;opacity:.6}
+@media (max-width:700px){.ks-btn kbd{display:none}}
+.ks-modal{position:fixed;inset:0;z-index:96;background:rgb(8 20 38/.55);display:flex;justify-content:center;align-items:flex-start;padding:8vh 16px 16px;backdrop-filter:blur(2px)}
+.ks-box{width:min(760px,100%);max-height:82vh;display:flex;flex-direction:column;background:var(--surface);border-radius:14px;box-shadow:0 24px 70px rgb(0 0 0/.35);overflow:hidden}
+.ks-top{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--rule);color:var(--muted)}
+.ks-top svg{width:20px;height:20px}
+.ks-in{flex:1;border:0;background:transparent;font:500 16px var(--body);color:var(--ink);outline:none;min-width:0}
+.ks-x{border:1px solid var(--rule);background:var(--surface-2);border-radius:6px;font:600 11px var(--body);color:var(--muted);padding:3px 7px;cursor:pointer}
+.ks-res{overflow:auto;padding:10px 12px 14px}
+.ks-res h4{margin:10px 6px 6px;font:700 11px var(--body);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.ks-hint{margin:8px 6px;font-size:13.5px;color:var(--muted);line-height:1.5}
+.ks-flt{margin:4px 6px 0;font-size:12px;color:var(--muted)}
+.ks-ex{display:flex;flex-wrap:wrap;gap:8px;margin:10px 6px}
+.ks-ex button{border:1px solid var(--rule);background:var(--surface-2);border-radius:999px;padding:6px 12px;font:500 13px var(--body);color:var(--ink);cursor:pointer}
+.ks-ex button:hover{border-color:#00aeef}
+.ks-a,.ks-s{display:grid;grid-template-columns:1fr auto;gap:4px 14px;width:100%;text-align:left;border:0;background:transparent;border-radius:10px;padding:10px;cursor:pointer;color:var(--ink);font:inherit}
+.ks-a:hover,.ks-s:hover,.ks-a:focus,.ks-s:focus{background:var(--surface-2);outline:none}
+.ks-l{font-size:14px;font-weight:600;line-height:1.35}
+.ks-l small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+.ks-v{justify-self:end;text-align:right;font:800 17px var(--display);white-space:nowrap}
+.ks-v.row{grid-column:1/-1;justify-self:start;text-align:left;white-space:normal;font:500 12.5px var(--body);display:flex;flex-wrap:wrap;gap:4px 14px}
+.ks-v.row em{font-style:normal;color:var(--muted)}
+.ks-m{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:11.5px;color:var(--muted)}
+.ks-chip{background:color-mix(in srgb,#00aeef 16%,var(--surface));color:var(--ink);border-radius:5px;padding:1px 7px;font-weight:700}
+.ks-p{opacity:.85}.ks-p::before{content:'· '}
+.ks-flash{animation:ksFlash 2.4s ease}
+@keyframes ksFlash{0%,60%{box-shadow:0 0 0 3px #00aeef,0 0 0 9px rgb(0 174 239/.18)}100%{box-shadow:none}}
+#mapSec{scroll-margin-top:calc(var(--navH,0px) + 64px)}

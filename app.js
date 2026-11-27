@@ -311,7 +311,7 @@ const logoImg = (k, cls = '') => DATA && DATA.logos && DATA.logos[k] ? `<span cl
    ============================================================ */
 const TABS = [
   { id: 'ov', t: 'Общие данные' }, { id: 'geo', t: 'Геология' }, { id: 'prod', t: 'Добыча' }, { id: 'mk', t: 'Маркетинг' }, { id: 'en', t: 'Электроэнергетика' },
-  { id: 'eco', t: 'Экология' }, { id: 'rel', t: 'Надёжность' }, { id: 'lc', t: 'Местное содержание' }, { id: 'econ', t: 'Экономика' }, { id: 'proj', t: 'Проекты' }];
+  { id: 'eco', t: 'Экология' }, { id: 'rel', t: 'Надёжность' }, { id: 'lc', t: 'Местное содержание' }, { id: 'econ', t: 'Экономика' }, { id: 'proj', t: 'Проекты' }, { id: 'tech', t: 'Тех. схемы' }];
 const S = { tab: 'ov', field: 'all', sub: {} };
 function readHash() {
   const [t, f] = location.hash.replace('#', '').split('/');
@@ -342,6 +342,7 @@ function render(mode = 'full') {
   drawAll();
   enhance(main);
   enSldBind(main);
+  tfBind(main);
   buildSubnav(main);
   if (mode === 'full') entrance(main);
   placeInk();
@@ -438,14 +439,16 @@ RENDER.ov = {
       { l: 'Инвестиции', v: fmt(sum(M.map(m => m.invest)), 1), u: 'млрд $', s: K.filter(k => ovF(k).m.invest != null).map(FS).join(', ') },
       { l: 'Выплаты в бюджет РК', v: fmt(sum(M.map(m => m.rk)), 1), u: 'млрд $', s: 'нарастающим итогом с начала контрактов' }]);
     html += panel('Сроки контрактов', '', ovTimeline(K), `Заливка — истекшая часть срока на ${esc(OV().asof)}; вертикальная линия — текущая дата.`);
-    html += `<div class="grid2">${panel('Текущая добыча нефти / ЖУ', 'тыс. т/сут', ovBars(K, 'oilDay', 'тыс. т/сут'), 'КПО — диапазон 28–29 тыс. т/сут, на графике среднее.')}
+    html += `<div class="grid2">${panel('Текущая добыча нефти / ЖУ', 'тыс. т/сут', ovBars(K, 'oilDay', 'тыс. т/сут'), 'Текущая суточная добыча по паспортам проектов; Дунга — по факту октября 2026.')}
       ${panel('Накопленная добыча нефти / ЖУ', 'млн т', ovBars(K, 'cumOil', 'млн т'))}
       ${panel('Остаточные извлекаемые запасы нефти / конденсата', 'млн т', ovBars(K, 'remOil', 'млн т'), ovNote)}
       ${panel('Отобрано от начальных извлекаемых запасов', '%', ovRings(K), 'Накопленная добыча / (накопленная добыча + остаточные извлекаемые запасы).')}</div>`;
     const fin = [['invest', 'Инвестиции', 'var(--c2)'], ['rk', 'Выплаты РК', 'var(--c1)'], ['kmg', 'КМГ (дивиденды / выплаты)', 'var(--c3)']];
     html += panel('Финансовые итоги с начала контрактов', 'млрд $', hbLegend(fin.map(([, n, c]) => ({ name: n, color: c }))) + hbars(K.map(k => ({ label: `${dotHTML(k)} ${esc(FS(k))}`, extra: esc(ovF(k).fin.period), bars: fin.map(([key, , c]) => { const v = ovF(k).m[key]; return { v, color: c, text: v == null ? 'нет данных' : `${fmt(v, v < 1 ? 3 : 1)} млрд $` }; }) }))),
-      'Периоды различаются: ТШО, КПО, НКОК — по 01.09.2026, Дунга — по 01.10.2026. У НКОК вместо выплат акционерам — возмещаемые затраты акционерам (58 млрд $).');
+      'Периоды различаются: ТШО, КПО, НКОК — по 01.11.2026, Дунга — по 01.10.2026. У НКОК вместо выплат акционерам — возмещаемые затраты акционерам (58 млрд $).');
     html += `<h3 class="sub-h">Карточки месторождений</h3><div class="ov-grid">${K.map(k => ovCard(k)).join('')}</div>`;
+    const PSI = (DATA.passports || {}).items || {};
+    if (Object.keys(PSI).length) html += `<h3 class="sub-h">Паспорта проектов и КТК</h3><div class="pass-list">${FIELDS.filter(k => PSI[k]).map(k => passportCard(k, FC(k))).join('')}${PSI.KTK ? passportCard('KTK', '#8291A5') : ''}</div>`;
     return `<section>${html}${srcNote(OV().src)}</section>`;
   },
   field(k) {
@@ -462,6 +465,7 @@ RENDER.ov = {
       ${panel('Отобрано от начальных извлекаемых запасов', '%', ovRings([k]), ({ X: 'Остаточные извлекаемые запасы — по категории С1.', Z: 'Накопленная добыча — жидкие углеводороды, запасы — конденсат.', D: 'Остаточные извлекаемые запасы — 20 млн т.' })[k] || 'Накопленная добыча / (накопленная добыча + остаточные извлекаемые запасы).')}
       ${panel(`Финансовые итоги ${f.fin.period}`, '', hbars(f.fin.rows.map(r => ({ label: esc(r.l), bars: [{ v: r.u === 'млн $' ? r.v / 1000 : r.v, color: r.sub || /КМГ/.test(r.l) ? 'var(--c3)' : FC(k), text: `${fmt(r.v, r.v < 10 ? 2 : 1)} ${r.u}` }] }))), f.fin.rows.some(r => r.n) ? f.fin.rows.filter(r => r.n).map(r => `${r.l} — ${r.n}.`).join(' ') : '')}
     </div></div>`;
+    if (((DATA.passports || {}).items || {})[k]) html += `<h3 class="sub-h">Паспорт проекта</h3>${passportCard(k, FC(k))}`;
     return `<section>${html}${srcNote(OV().src)}</section>`;
   }
 };
@@ -499,6 +503,32 @@ function geoMain(k) {
   const t = g.totals[0];
   return t;
 }
+
+// ---------- Геология: описание месторождения, фонд скважин, схемы ----------
+function geoInfo(k, I) {
+  if (!I) return '';
+  let left = '';
+  if (I.lead) left += `<p class="gi-lead">${esc(I.lead)}</p>`;
+  if (I.doc) left += `<p class="gi-doc"><span>Разработка ведётся согласно</span>${esc(I.doc)}</p>`;
+  if (I.objects) left += `<h4 class="gi-h">Эксплуатационные объекты</h4><ul class="gi-obj">${I.objects.map(o => `<li><b>${esc(o[0])}</b><span>${esc(o[1])}</span></li>`).join('')}</ul>`;
+  if (I.phases) left += `<h4 class="gi-h">Основные фазы разработки</h4><div class="gi-ph">${I.phases.map((f, i) => `<div class="gi-phi"><div class="gi-pht"><b>${esc(f.t)}</b><span>${esc(f.p)}</span></div><ul>${f.items.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`).join('')}</div>`;
+  if (I.facts) left += `<h4 class="gi-h">Основные параметры</h4><dl class="gi-facts">${I.facts.map(f => `<div><dt>${esc(f[0])}</dt><dd>${esc(f[1])}</dd></div>`).join('')}</dl>`;
+  const imgs = (I.imgs || []).map(m => `<figure class="geo-img" style="flex:${m.px ? `0 0 ${m.px}px` : m.w || 1}"><img src="${m.src}" alt="${esc(m.cap)}" loading="lazy"><figcaption>${esc(m.cap)}</figcaption></figure>`).join('');
+  const ip = imgs ? panel('Схема месторождения', 'нажмите, чтобы увеличить', `<div class="geo-imgs">${imgs}</div>`) : '';
+  let html = `<h3 class="sub-h" data-nav="Описание и разработка">Описание месторождения и разработка</h3>` + (I.wide ? `${ip}<div style="margin-top:16px">${panel('Общие сведения', '', left)}</div>` : `<div class="grid2 gi-grid">${panel('Общие сведения', '', left)}${ip}</div>`);
+  const W = I.wells;
+  if (W) {
+    const mx = Math.max(...W.groups.map(x => x.n));
+    const grp = hbars(W.groups.map(x => ({ label: esc(x.t), extra: x.note ? esc(x.note) : '', bars: [{ v: x.n, color: FC(k), text: fmt(x.n) + ' скв.' }] })), { max: mx });
+    const main = W.groups.filter(x => x.items);
+    const det = main.map(x => `<p class="eyebrow" style="margin:4px 0 8px">${esc(x.t)} — ${fmt(x.n)} скв.</p>` + hbars(x.items.map(it => ({ label: esc(it[0]), bars: [{ v: it[1], color: 'var(--c7)', text: fmt(it[1]) }] })), { max: Math.max(...x.items.map(it => it[1])) })).join('<div style="height:12px"></div>');
+    html += `<h3 class="sub-h" data-nav="Фонд скважин">${esc(W.title)}</h3>` + kpis([{ l: 'Общий фонд скважин', v: fmt(W.total), u: 'скв.' }].concat(main.map(x => ({ l: x.t, v: fmt(x.n), u: 'скв.', s: x.items.map(it => `${it[0].toLowerCase()} — ${it[1]}`).slice(0, 3).join(', ') }))));
+    html += `<div class="grid2">${panel('Структура фонда', 'скважин', grp)}${panel('Детализация', 'скважин', det)}</div>`;
+    if (W.grid) { const G = W.grid; html += `<div style="margin-top:16px">${panel(G.title, 'скважин', table([{ t: 'Остров' }].concat(G.cols.map(c => ({ t: c, v: true }))).concat([{ t: 'Всего', v: true }]), G.rows.map(r => ({ cells: [esc(r[0])].concat(r.slice(1).map(v => fmt(v))).concat([fmt(sum(r.slice(1)))]) })).concat([{ cls: 'tot', cells: ['Итого'].concat(G.cols.map((_, j) => fmt(sum(G.rows.map(r => r[j + 1]))))).concat([fmt(sum(G.rows.map(r => sum(r.slice(1)))))]) }])))}</div>`; }
+  }
+  return html;
+}
+
 RENDER.geo = {
   field(k) {
     const g = DATA.geo[k];
@@ -539,12 +569,22 @@ RENDER.geo = {
     const tbl = table([{ t: g.objLabel }, { t: 'Категория' }].concat(cols.map(c => ({ t: GEO_COLS[c].t, v: true }))),
       detail.map(o => ({ cells: [esc(o.obj), esc(o.cat)].concat(cols.map(c => o[c] == null ? null : fmtF(o[c], GEO_COLS[c].d))) }))
         .concat(g.totals.map(o => ({ cls: 'tot', cells: [esc(o.obj), esc(o.cat)].concat(cols.map(c => o[c] == null ? null : fmtF(o[c], GEO_COLS[c].d))) }))), { fit: true });
-    let html = secHead(`Геология · ${FN(k)}`, 'Запасы нефти и газа по объектам подсчёта и категориям, коэффициенты извлечения.') + kpis(ks) +
-      `<div class="grid2">${panel('Запасы нефти по объектам', 'млн т', oilChart)}${gasChart}</div>` +
+    const GI = g.info || {};
+    const view = g.info && sub('geoView') === 'dev' ? 'dev' : 'res';
+    const vsel = g.info ? `<div class="obj-sel"><span class="obj-sel-l">Подраздел</span>${seg('geoView', [{ v: 'res', t: 'Запасы' }, { v: 'dev', t: 'Разработка и фонд скважин' }], view, '')}</div>` : '';
+    if (view === 'dev') {
+      let h = secHead(`Геология · ${FN(k)}`, 'Сведения о месторождении и его разработке, эксплуатационные объекты, фонд скважин.') + vsel + kpis(ks) + geoInfo(k, g.info);
+      g.extras.filter(ex => ex.type === 'wells').forEach(ex => { h += `<h3 class="sub-h">${ex.title}</h3>` + table([{ t: 'Тип скважин' }, { t: 'Кол-во', v: true }, { t: 'Объекты' }, { t: 'Горизонт' }, { t: 'Средняя глубина (абс. отм.), м', v: true }], ex.rows.map(r => ({ cells: [esc(r[0]), fmt(r[1]), esc(r[2]), esc(r[3]), esc(r[4])] }))); });
+      (GI.tables || []).forEach(t => { h += `<h3 class="sub-h">${esc(t.title)}</h3>` + table(t.head.map((x, i) => ({ t: esc(x), v: i > 0 })), t.rows.map(r => ({ cells: [esc(r[0])].concat(r.slice(1).map(v => typeof v === 'number' ? fmtF(v, String(v).split('.')[1] ? String(v).split('.')[1].length : 0) : esc(v))) })), { fit: true }); });
+      if (GI.notes && GI.notes.length) h += `<div class="panel geo-notes"><h4>Примечание</h4><ul>${GI.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul></div>`;
+      return `<section>${h}</section>`;
+    }
+    let html = secHead(`Геология · ${FN(k)}`, 'Запасы нефти и газа по объектам подсчёта и категориям, коэффициенты извлечения.') + vsel + kpis(ks) +
+      `<h3 class="sub-h">Запасы по объектам</h3><div class="grid2">${panel('Запасы нефти по объектам', 'млн т', oilChart)}${gasChart}</div>` +
       `<h3 class="sub-h">Запасы по объектам и категориям</h3>${tbl}`;
     if (g.kinNote) html += `<p class="note">${g.kinNote}. Итог по ${FS('Y')} и участку «${KOR()}» сложен из двух участков с разными категориями (В+С1 и C₁+C₂).</p>`;
     // extras
-    g.extras.forEach(ex => {
+    g.extras.filter(ex => !(g.info && ex.type === 'wells')).forEach(ex => {
       html += `<h3 class="sub-h">${ex.title}</h3>`;
       if (ex.type === 'params') html += `<div class="params">${ex.rows.map(r => `<div><div class="v">${fmt(r[2])}<small>${esc(r[1] === '—' ? '' : r[1])}</small></div><div class="l">${esc(r[0])}</div></div>`).join('')}</div>`;
       if (ex.type === 'hbar') html += `<div class="panel">${hbars(ex.rows.map(r => ({ label: esc(r[0]), bars: [{ v: r[1], color: FC(k), text: fmtF(r[1], 2) + ' %' }] })))}<p class="note">Компонентный состав по образцам ВК, мол. %.</p></div>`;
@@ -571,7 +611,7 @@ RENDER.geo = {
         ex.rows.forEach(r => { if (r[0] !== cur) { cur = r[0]; rows.push({ group: esc(cur) }); } rows.push({ cls: cur === 'В целом' ? 'tot' : '', cells: [esc(r[1]), fmt(r[2], 1), fmt(r[3], 1), fmtF(r[4], 3)] }); });
         html += table([{ t: 'Вид запасов' }, { t: 'Геологические', v: true }, { t: 'Извлекаемые', v: true }, { t: 'Коэф. извлечения', v: true }], rows);
       }
-      if (ex.type === 'wells') html += table([{ t: 'Тип скважин' }, { t: 'Кол-во', v: true }, { t: 'Объекты' }, { t: 'Горизонт' }, { t: 'Средняя глубина (абс. отм.), м', v: true }],
+      if (ex.type === 'wells' && !g.info) html += table([{ t: 'Тип скважин' }, { t: 'Кол-во', v: true }, { t: 'Объекты' }, { t: 'Горизонт' }, { t: 'Средняя глубина (абс. отм.), м', v: true }],
         ex.rows.map(r => ({ cells: [esc(r[0]), fmt(r[1]), esc(r[2]), esc(r[3]), esc(r[4])] })));
     });
     const src = { D: 'книга D, лист «Геология».', X: 'книга X, листы «Геология», «Геология 1», «Геология 2».', Y: 'книга Y, листы «Геология 1», «Геология 2».', Z: 'книга Z, листы «Геология», «Геология 1»–«Геология 3».' }[k];
@@ -839,12 +879,13 @@ function buildSubnav(main) {
   if (hs.length < 2) {                      // нет подзаголовков — переход по названиям панелей
     hs = [...sec.querySelectorAll('.panel .chart-head > h3, .pf-yr')].filter(h => !h.closest('.panel .panel') && h.textContent.trim());
     hs.forEach(h => h.classList.add('sub-anchor'));
-    if (hs.length < 3) return;
+    if (hs.length < 3 && !(S.tab === 'mk' && MAP_HTML)) return;
   }
+  const mapBtn = S.tab === 'mk' && MAP_HTML ? '<button type="button" data-go="mapSec">Карта месторождений и маршрутов</button>' : '';
   const lab = h => { const t = h.dataset.nav || h.textContent.replace(/\s+/g, ' ').split(',')[0].trim(); return t.length > 42 ? t.slice(0, 40) + '…' : t; };
   hs.forEach((h, i) => h.id = 'sub-' + i);
   const nav = document.createElement('nav'); nav.className = 'subnav'; nav.setAttribute('aria-label', 'Подразделы');
-  nav.innerHTML = `<div class="subnav-in"><button type="button" data-go="top" class="on">В начало</button>${hs.map((h, i) => `<button type="button" data-go="sub-${i}">${esc(lab(h))}</button>`).join('')}</div>`;
+  nav.innerHTML = `<div class="subnav-in"><button type="button" data-go="top" class="on">В начало</button>${hs.map((h, i) => `<button type="button" data-go="sub-${i}">${esc(lab(h))}</button>`).join('')}${mapBtn}</div>`;
   const head = sec.querySelector('.sec-head'); (head || sec.firstChild).after(nav);
   setNavH(); spySubnav();
 }
@@ -852,7 +893,7 @@ function setNavH() { const n = document.querySelector('nav.disc'); if (n) docume
 function spySubnav() {
   const nav = document.querySelector('.subnav'); if (!nav) return;
   const off = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--navH')) || 0) + nav.offsetHeight + 24;
-  const hs = [...document.querySelectorAll('#main .sub-h[id], #main .sub-anchor[id]')];
+  const hs = [...document.querySelectorAll('#main .sub-h[id], #main .sub-anchor[id], #mapSec:not([hidden])')];
   let cur = 'top'; hs.forEach(h => { if (h.getBoundingClientRect().top - off <= 0) cur = h.id; });
   nav.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.go === cur));
   const on = nav.querySelector('button.on'); if (on && nav.dataset.cur !== cur) { nav.dataset.cur = cur; const sc = nav.querySelector('.subnav-in'); sc.scrollTo({ left: on.offsetLeft - sc.clientWidth / 2 + on.offsetWidth / 2, behavior: 'smooth' }); }
@@ -899,7 +940,7 @@ function enSldBind(root) {
     const show = (el, ev) => { tip.innerHTML = el.dataset.tip; tip.style.opacity = 1; const r = w.getBoundingClientRect(), b = el.getBoundingClientRect(); let x = b.left - r.left + b.width / 2 + 14, y = b.top - r.top - 10; if (x + tip.offsetWidth > r.width) x = b.left - r.left - tip.offsetWidth - 14; tip.style.transform = `translate(${Math.max(0, x)}px,${Math.max(0, y)}px)`; };
     w.querySelectorAll('.sl-gen').forEach(el => { el.addEventListener('mouseenter', ev => show(el, ev)); el.addEventListener('focus', ev => show(el, ev)); el.addEventListener('mouseleave', () => tip.style.opacity = 0); el.addEventListener('blur', () => tip.style.opacity = 0); });
   });
-  root.querySelectorAll('.en-map img').forEach(img => img.addEventListener('click', () => {
+  root.querySelectorAll('.en-map img, .geo-img img').forEach(img => img.addEventListener('click', () => {
     const m = document.createElement('div'); m.className = 'en-lb'; m.innerHTML = `<img src="${img.src}" alt=""><button type="button" aria-label="Закрыть">×</button>`;
     const close = () => m.remove(); m.addEventListener('click', close); document.addEventListener('keydown', function k(ev) { if (ev.key === 'Escape') { close(); document.removeEventListener('keydown', k); } });
     document.body.appendChild(m);
@@ -985,9 +1026,12 @@ RENDER.en = {
       const cm = e.cons.rows.map(r => r.m), mm = e.months.filter(m => cm.includes(m));
       const selM = mm.includes(sub('enMonth')) ? sub('enMonth') : e.lastMonth, mi = e.months.indexOf(selM);
       const isLast = selM === e.lastMonth;
+      const UMAP = Object.assign({}, e.unitsByMonth || {}, { [e.lastMonth]: e.unitsLast }), uMonths = Object.keys(UMAP).sort();
+      const hasU = !!UMAP[selM], uM = hasU ? selM : e.lastMonth, UMs = UMAP[uM].filter(u => plant === 'all' || u.plant === plant);
+      const uOnly = uMonths.map(m => mLong(m)).join(' и ');
       const siteOf = { 'КТЛ': 'ГТС-1 + ГТС-2', 'ЗВП': 'ГТС-3', 'ЗТП': 'ГТС-4' };
-      const bySite = isLast
-        ? [...new Set(UL.map(u => u.site))].map(st => { const us = UL.filter(u => u.site === st); return { st, plant: us[0].plant, cap: sum(us.map(u => u.cap)), fact: sum(us.map(u => u.fact)) }; })
+      const bySite = hasU
+        ? [...new Set(UMs.map(u => u.site))].map(st => { const us = UMs.filter(u => u.site === st); return { st, plant: us[0].plant, cap: sum(us.map(u => u.cap)), fact: sum(us.map(u => u.fact)) }; })
         : PL.map(p => ({ st: siteOf[p] || p, plant: p, cap: e.byPlant[p].cap[mi], fact: e.byPlant[p].gen[mi] }));
       const genM = gen[mi];
       const cRow = e.cons.rows.find(r => r.m === selM);
@@ -998,17 +1042,17 @@ RENDER.en = {
         title: 'ГТС', cats: bySite.map(x => x.st),
         series: [{ name: 'Установленная мощность', color: 'var(--c8)', hatch: true, values: bySite.map(x => x.cap), unit: 'МВт' }, { name: 'Фактическая выработка', color: FC(k), values: bySite.map(x => x.fact), unit: 'МВт·ч' }],
         tipTitle: (c, i) => `${c} · ${bySite[i].plant}`, tipExtra: i => bySite[i].cap ? `<div class="r"><span>Загрузка</span><span>${pct(bySite[i].fact / bySite[i].cap, 0)}</span></div>` : ''
-      }), isLast ? bySite.map(x => `${x.st} — ${x.plant}`).join('; ') + '.' : (PL.includes('КТЛ') ? `ГТС-1 и ГТС-2 (оба — КТЛ) показаны вместе: раздельные данные по ним есть только за ${mLong(e.lastMonth)}.` : bySite.map(x => `${x.st} — ${x.plant}`).join('; ') + '.'))}
+      }), hasU ? bySite.map(x => `${x.st} — ${x.plant}`).join('; ') + '.' : (PL.includes('КТЛ') ? `ГТС-1 и ГТС-2 (оба — КТЛ) показаны вместе: раздельные данные по ним есть только за ${uOnly}.` : bySite.map(x => `${x.st} — ${x.plant}`).join('; ') + '.'))}
       ${panel(`Нагрузка по потребителям, ${mLong(selM)}`, 'МВт·ч', cRow ? donut(CJ.map(j => ({ label: enCons(e, e.cons.cols[j]), v: cRow.v[j], color: PAL[j], text: `${fmt(cRow.v[j], 1)} МВт·ч` })), { v: fmt(cSum, 1), l: 'МВт·ч всего' }) : '<div class="empty-note">Нет данных за этот месяц</div>', cRow ? `Выработка ${fmt(genM, 1)} МВт·ч, потребление ${fmt(cSum, 1)} МВт·ч; баланс ${(genM - cSum >= 0 ? '+' : '') + fmt(genM - cSum, 1)} МВт·ч.` : '')}</div>`;
-      const NT = (e.notes || []).filter(n => UL.some(u => enNote(e, u.name) === n));
-      html += `<h3 class="sub-h" data-nav="Газотурбинные генераторы">Газотурбинные генераторы ${esc(UL[0].name)} … ${esc(UL[UL.length - 1].name)}, ${mLong(e.lastMonth)}</h3>`;
+      const NT = (e.notes || []).filter(n => UMs.some(u => enNote(e, u.name) === n));
+      html += `<h3 class="sub-h" data-nav="Газотурбинные генераторы">Газотурбинные генераторы ${esc(UMs[0].name)} … ${esc(UMs[UMs.length - 1].name)}, ${mLong(uM)}</h3>`;
       html += panel(`Выработка газотурбинных генераторов`, 'МВт·ч; уст. мощность — МВт', chartBox({
-        title: 'ТГ', cats: UL.map(mk),
-        series: [{ name: 'Установленная мощность', color: 'var(--c8)', hatch: true, values: UL.map(u => u.cap), unit: 'МВт' }, { name: 'Фактическая выработка', color: FC(k), values: UL.map(u => u.fact), unit: 'МВт·ч' }],
-        tipTitle: (c, i) => `${UL[i].name} · ${UL[i].site}`, tipExtra: i => { const n = enNote(e, UL[i].name); return (UL[i].cap ? `<div class="r"><span>Загрузка</span><span>${pct(UL[i].fact / UL[i].cap, 0)}</span></div>` : '') + (n ? `<div style="max-width:240px;white-space:normal;margin-top:4px">${esc(n.t)}</div>` : ''); }
-      }), NT.map(n => `${n.mark} ${esc(n.t)}`).join('<br>') + (isLast ? '' : `${NT.length ? '<br>' : ''}По отдельным газотурбинным генераторам данные есть только за ${mLong(e.lastMonth)}.`));
+        title: 'ТГ', cats: UMs.map(mk),
+        series: [{ name: 'Установленная мощность', color: 'var(--c8)', hatch: true, values: UMs.map(u => u.cap), unit: 'МВт' }, { name: 'Фактическая выработка', color: FC(k), values: UMs.map(u => u.fact), unit: 'МВт·ч' }],
+        tipTitle: (c, i) => `${UMs[i].name} · ${UMs[i].site}`, tipExtra: i => { const n = enNote(e, UMs[i].name); return (UMs[i].cap ? `<div class="r"><span>Загрузка</span><span>${pct(UMs[i].fact / UMs[i].cap, 0)}</span></div>` : '') + (n ? `<div style="max-width:240px;white-space:normal;margin-top:4px">${esc(n.t)}</div>` : ''); }
+      }), NT.map(n => `${n.mark} ${esc(n.t)}`).join('<br>') + (hasU ? '' : `${NT.length ? '<br>' : ''}По отдельным газотурбинным генераторам данные есть только за ${uOnly}; показан ${mLong(uM)}.`));
       html += '<div style="margin-top:16px"></div>' + table([{ t: 'Объект' }, { t: 'Участок' }, { t: 'ГТГ' }, { t: 'Уст. мощность, МВт', v: true }, { t: 'Факт, МВт·ч', v: true }, { t: 'Загрузка', v: true }, { t: 'Состояние' }],
-        UL.map(u => { const n = enNote(e, u.name); return { cells: [esc(u.plant), esc(u.site), esc(u.name) + (n ? `<sup class="en-mk">${n.mark}</sup>` : ''), fmt(u.cap, 2), fmt(u.fact, 1), pct(u.fact / u.cap, 0), n ? `<span class="pill ${n.status === 'fault' ? 'bad' : 'neutral'}">${n.status === 'fault' ? 'авария' : 'выведен'}</span>` : u.fact ? '<span class="pill good">в работе</span>' : '<span class="pill neutral">остановлен</span>'] }; }));
+        UMs.map(u => { const n = enNote(e, u.name); return { cells: [esc(u.plant), esc(u.site), esc(u.name) + (n ? `<sup class="en-mk">${n.mark}</sup>` : ''), fmt(u.cap, 2), fmt(u.fact, 1), pct(u.fact / u.cap, 0), n ? `<span class="pill ${n.status === 'fault' ? 'bad' : 'neutral'}">${n.status === 'fault' ? 'авария' : 'выведен'}</span>` : u.fact ? '<span class="pill good">в работе</span>' : '<span class="pill neutral">остановлен</span>'] }; }));
       html += `<p class="note">Помесячные данные по газотурбинным генераторам (${e.rawRows} записей) сведены по заводам.</p>`;
       if (e.sld) html += `<h3 class="sub-h" data-nav="Упрощенная однолинейная схема">Упрощенная однолинейная схема электроснабжения объектов ${esc(FS(k))}</h3><div class="panel">${enSld(e, { focus: plant === 'all' ? null : plant })}<p class="note">${plant === 'all' ? '' : `Генераторы завода ${plant} выделены, остальные приглушены. `}Наведите на генератор, чтобы увидеть мощность, выработку и состояние. ВЛ — воздушная линия; ГТС — газотурбинная станция.</p></div>`;
     }
@@ -2169,7 +2213,6 @@ RENDER.proj = {
   field(k) {
     const D_ = pjDeck(k);
     let html = secHead(`Проекты · ${FN(k)}`, D_ ? 'Стадия, суть, финансовые показатели, статус и бюджет 2026 года.' : 'Описание, статус и основные риски проекта.');
-    if (((DATA.passports || {}).items || {})[k]) html += `<h3 class="sub-h">Паспорт проекта</h3>${passportCard(k, FC(k))}<h3 class="sub-h">Инвестиционные проекты</h3>`;
     html += pjPhases(k);
     if (D_) html += `<div class="pj-list">${D_.map((p, i) => pjCard(k, p, i)).join('')}</div>`;
     else html += RENDER_PROJ_BOOK(k);
@@ -2204,8 +2247,6 @@ RENDER.proj = {
         ${x.p.fin ? `<span class="pj-mchips">${x.p.fin.capex != null ? `<span><em>$</em>${pjMoney(x.p.fin.capex)}</span>` : ''}${x.p.fin.irr != null ? `<span><em>%</em>IRR ${fmtF(x.p.fin.irr, 1)}%</span>` : ''}${x.p.fin.pp ? `<span><em>↺</em>${x.p.fin.pp}</span>` : ''}</span>` : ''}
         ${x.p.finish ? `<span class="pj-mb">⏱ ${esc(x.p.finish)}</span>` : ''}<span class="pj-more">Подробнее →</span></button>`).join('')}</div>`;
     });
-    const PSI = (DATA.passports || {}).items || {};
-    if (Object.keys(PSI).length) html += `<h3 class="sub-h">Паспорта проектов и КТК</h3><div class="pass-list">${FIELDS.filter(k => PSI[k]).map(k => passportCard(k, FC(k))).join('')}${PSI.KTK ? passportCard('KTK', '#8291A5') : ''}</div>`;
     const X = ((DATA.projDeck || {}).extra || []);
     if (X.length) html += `<h3 class="sub-h">Другие проекты портфеля</h3><div class="pj-list">${X.map((p, i) => pjCard(null, p, i)).join('')}</div>`;
     return `<section>${html}${srcNote('презентация «Инвпроекты ДКНП»; книги проектов — листы «Проекты», «ГРПиБ таблица».')}</section>`;
@@ -2231,6 +2272,255 @@ function refPanel(sec, k) {
 /* ============================================================
    Выгрузка справки: PDF (печать) и PowerPoint (редактируемые таблицы и диаграммы)
    ============================================================ */
+
+// ---------- Технологические схемы ----------
+const TF_NAMES = { oil: 'Нефть / мультифазный поток', gas: 'Газ', s: 'Сера', w: 'Вода', off: 'Отходящие газы', cond: 'Конденсат', drain: 'Закрытый дренаж' };
+function tfSvg(sc) {
+  const used = new Set(), NN = sc.nodes, EE = sc.edges;
+  const L = (x, y, t, an = 'middle', cls = '') => t.split('\n').map((ln, i) => `<text x="${x}" y="${y + i * 13.5}" text-anchor="${an}" class="tf-t ${cls}">${esc(ln)}</text>`).join('');
+  const hit = (q, n) => q[0] >= n.x - 4 && q[0] <= n.x + n.w + 4 && q[1] >= n.y - 4 && q[1] <= n.y + n.h + 4;
+  // Граф потоков: линии режутся на отрезки в точках примыкания других линий.
+  // Отрезок направлен, если у линии есть стрелка или ровно один её конец упирается в блок; иначе это сборная шина (без направления).
+  const K = q => Math.round(q[0]) + ',' + Math.round(q[1]);
+  const onSeg = (q, a, b) => Math.abs((b[0] - a[0]) * (q[1] - a[1]) - (b[1] - a[1]) * (q[0] - a[0])) < 1 && q[0] >= Math.min(a[0], b[0]) - 1 && q[0] <= Math.max(a[0], b[0]) + 1 && q[1] >= Math.min(a[1], b[1]) - 1 && q[1] <= Math.max(a[1], b[1]) + 1;
+  const nodeAt = q => NN.findIndex(n => hit(q, n));
+  const ends = EE.flatMap(e => [e.p[0], e.p[e.p.length - 1]]);
+  const PC = [];   // отрезки: {a, b, ei, dir, last}
+  EE.forEach((e, ei) => {
+    const sn = nodeAt(e.p[0]), en = nodeAt(e.p[e.p.length - 1]);
+    const dir = e.a ? 1 : (sn >= 0) !== (en >= 0) ? 1 : 0;
+    const pts = [];
+    e.p.forEach((a, i) => { pts.push(a); const b = e.p[i + 1]; if (!b) return; const J = ends.filter(q => onSeg(q, a, b) && K(q) !== K(a) && K(q) !== K(b)).sort((u, v) => Math.hypot(u[0] - a[0], u[1] - a[1]) - Math.hypot(v[0] - a[0], v[1] - a[1])); J.forEach(q => { if (K(pts[pts.length - 1]) !== K(q)) pts.push(q); }); });
+    let cur = [pts[0]];
+    for (let i = 1; i < pts.length; i++) { cur.push(pts[i]); const isJ = ends.some(q => K(q) === K(pts[i])) && i < pts.length - 1; if (isJ) { PC.push({ p: cur, ei, dir, last: false }); cur = [pts[i]]; } }
+    PC.push({ p: cur, ei, dir, last: true });
+  });
+  const AT = {}; PC.forEach((c, i) => { [K(c.p[0]), K(c.p[c.p.length - 1])].forEach(k => (AT[k] = AT[k] || []).push(i)); });
+  function flow(k, up) {
+    const seen = new Set(), segs = new Set(), nodes = new Set([k]);
+    const go = (i, exit) => {
+      const q = exit, nk = nodeAt(q);
+      if (nk >= 0 && nk !== k) { nodes.add(nk); segs.add(i); return true; }
+      if (nk === k) return false;
+      let ok = false, any = false;
+      (AT[K(q)] || []).forEach(j => {
+        if (j === i || seen.has(j)) return; const c = PC[j], a = c.p[0], b = c.p[c.p.length - 1];
+        let ex = null;
+        if (c.dir) { if (!up && K(a) === K(q)) ex = b; if (up && K(b) === K(q)) ex = a; } else ex = K(a) === K(q) ? b : a;
+        if (!ex) return; any = true; seen.add(j); if (go(j, ex)) ok = true;
+      });
+      if (!any && PC[i].dir) ok = true;   // вход/выход за пределы схемы
+      if (ok) segs.add(i); return ok;
+    };
+    PC.forEach((c, i) => {
+      const a = c.p[0], b = c.p[c.p.length - 1], ia = nodeAt(a) === k, ib = nodeAt(b) === k; if (!ia && !ib) return;
+      let ex = null;
+      if (c.dir) { if (!up && ia) ex = b; if (up && ib) ex = a; } else ex = ia ? b : a;
+      if (ex && !seen.has(i)) { seen.add(i); go(i, ex); }
+    });
+    return [segs, nodes];
+  }
+  const adj = NN.map((_, k) => { const [d, dn] = flow(k, false), [u, un] = flow(k, true); return { e: [...d, ...u], n: [...dn, ...un] }; });
+  const eg = PC.map((c, i) => { const e = EE[c.ei]; used.add(e.c); const go = e.go ? ` data-tgo="${e.go}"` : '';
+    return `<polyline class="tf-ln tf-${e.c}${e.go ? ' tf-go' : ''}"${go} data-e="${i}" pathLength="1" style="animation-delay:${150 + c.ei * 25}ms" points="${c.p.map(q => q.join(',')).join(' ')}"${e.a && c.last ? ` marker-end="url(#tfa-${e.c})"` : ''}/>`; });
+  const ng = NN.map((n, i) => {
+    const cx = n.x + n.w / 2, cy = n.y + n.h / 2, go = n.go ? ` data-tgo="${n.go}" role="button"` : '';
+    const lines = n.t ? n.t.split('\n') : [];
+    const shp = n.s === 'comp' ? `<path class="tf-ic" d="M${n.x},${n.y} L${n.x + n.w},${n.y + n.h * .25} L${n.x + n.w},${n.y + n.h * .75} L${n.x},${n.y + n.h} Z"/>`
+      : n.s === 'hx' ? `<rect class="tf-ic" x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="2"/><path class="tf-icx" d="M${n.x + 4},${n.y + 3} L${n.x + n.w - 4},${n.y + n.h - 3} M${n.x + n.w - 4},${n.y + 3} L${n.x + 4},${n.y + n.h - 3}"/>`
+      : `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="8"/>`;
+    return `<g class="tf-n ${n.c ? 'tf-' + n.c : 'tf-u'}${n.s ? ' tf-shp' : ''}" data-i="${i}" data-e="${adj[i].e.join(' ')}" data-nb="${adj[i].n.join(' ')}" tabindex="0"${go} style="animation-delay:${i * 45}ms">${shp}${lines.length ? L(cx, cy - (lines.length - 1) * 6.75 + 4.5, n.t) : ''}</g>`;
+  });
+  const tg = (sc.texts || []).map(t => { const go = (t[4] || '').startsWith('go:') ? t[4].slice(3) : ''; return go ? `<g class="tf-go" data-tgo="${go}" tabindex="0" role="button">${L(t[0], t[1], t[2], t[3], 'tf-lab tf-link')}</g>` : L(t[0], t[1], t[2], t[3], 'tf-lab ' + (t[4] || '')); });
+  const defs = [...used].map(c => `<marker id="tfa-${c}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="tf-ah tf-${c}" d="M0,0 L10,5 L0,10 Z"/></marker>`).join('');
+  const leg = `<div class="tf-leg">${Object.keys(TF_NAMES).filter(c => used.has(c)).map(c => `<span><i class="tf-${c}"></i>${TF_NAMES[c]}</span>`).join('')}</div>`;
+  return `<div class="tf-wrap"><div class="fl-tools"><span class="tf-hint">Наведите на блок, чтобы выделить связанные потоки</span><div><button type="button" class="fl-btn" data-tf="full">Во весь экран</button></div></div><div class="tf-scroll"><svg class="tf" viewBox="0 0 ${sc.w} ${sc.h}" style="--tfw:${sc.w}" role="img" aria-label="${esc(sc.title)}"><defs>${defs}</defs>${eg.join('')}${ng.join('')}${tg.join('')}</svg></div>${leg}</div>`;
+}
+function tfBind(root) {
+  root.querySelectorAll('.tf-wrap').forEach(W => {
+    const svg = W.querySelector('svg.tf'); if (!svg) return;
+    const on = i => { const g = svg.querySelector(`.tf-n[data-i="${i}"]`); W.classList.add('focus'); g.dataset.e.split(' ').forEach(j => { const l = j && svg.querySelector(`.tf-ln[data-e="${j}"]`); if (l) l.classList.add('on'); }); g.dataset.nb.split(' ').forEach(j => { const n = j && svg.querySelector(`.tf-n[data-i="${j}"]`); if (n) n.classList.add('on'); }); };
+    const off = () => { W.classList.remove('focus'); svg.querySelectorAll('.on').forEach(x => x.classList.remove('on')); };
+    svg.querySelectorAll('.tf-n').forEach(g => { g.addEventListener('mouseenter', () => on(g.dataset.i)); g.addEventListener('focus', () => on(g.dataset.i)); g.addEventListener('mouseleave', off); g.addEventListener('blur', off); });
+    const fb = W.querySelector('[data-tf="full"]'); if (fb) fb.addEventListener('click', () => { const p = W.closest('.panel') || W; if (document.fullscreenElement) document.exitFullscreen(); else if (p.requestFullscreen) p.requestFullscreen(); });
+  });
+}
+RENDER.tech = {
+  field(k) {
+    const T = DATA.tech && DATA.tech[k];
+    if (!T) return `<section>${secHead(`Технологические схемы · ${FN(k)}`, 'Технологические блок-схемы объектов месторождения.')}<div class="panel"><div class="empty-note">Технологические схемы по ${esc(FS(k))} пока не добавлены. Сейчас в разделе есть схемы ТШО.</div><p style="margin-top:12px"><button type="button" class="btn-link" data-goto="Y">Открыть схемы ТШО</button></p></div></section>`;
+    const L = T.schemes, cur = L.some(x => x.id === sub('tech')) ? sub('tech') : L[0].id, sc = L.find(x => x.id === cur);
+    return `<section>${secHead(`Технологические схемы · ${FN(k)}`, 'Упрощённые технологические блок-схемы: от промысловых объектов до заводов и отгрузки продукции. Нажмите на завод на схеме, чтобы открыть его схему.')}
+      <div class="obj-sel"><span class="obj-sel-l">Выберите объект</span>${seg('tech', L.map(x => ({ v: x.id, t: x.b })), cur, '')}</div>
+      <div class="panel"><div class="chart-head"><h3>${esc(sc.title)}</h3></div>${tfSvg(sc)}${sc.note ? `<p class="note">${esc(sc.note)}</p>` : ''}</div></section>`;
+  },
+  all() { return this.field('Y'); }
+};
+document.addEventListener('click', e => { const t = e.target.closest('[data-tgo]'); if (!t) return; S.sub.tech = t.dataset.tgo; const y = window.scrollY; render('soft'); window.scrollTo(0, y); });
+document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest && e.target.closest('[data-tgo]')) { e.preventDefault(); e.target.closest('[data-tgo]').click(); } });
+
+
+// ---------- Умный поиск по модели (без ИИ, работает в браузере) ----------
+const KS = { idx: null };
+const KS_FIELD = { X: ['нкок', 'скп', 'кашаган', 'ncoc', 'северо-каспий', 'северокаспий', 'каспий'], Y: ['тшо', 'тенгиз', 'tco', 'королевск'], Z: ['кпо', 'карачаганак', 'kpo'], D: ['дунга', 'dunga'] };
+const KS_MON = ['январ', 'феврал', 'март', 'апрел', 'ма', 'июн', 'июл', 'август', 'сентябр', 'октябр', 'ноябр', 'декабр'];
+const KS_MN = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
+const KS_STOP = new Set(['какой', 'какая', 'какое', 'какие', 'каков', 'сколько', 'по', 'в', 'во', 'на', 'за', 'у', 'и', 'или', 'а', 'с', 'со', 'к', 'о', 'об', 'от', 'до', 'из', 'для', 'мне', 'покажи', 'показать', 'найди', 'найти', 'что', 'где', 'как', 'есть', 'ли', 'это', 'был', 'была', 'было', 'были', 'всего', 'текущий', 'текущая', 'месторождение', 'месторождения', 'месторождении', 'проект', 'данные', 'год', 'году', 'года', 'г', 'млн', 'т', 'тонн', 'млрд', 'м3', 'м³']);
+const ksNorm = s => String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/[«»"“”(),;:!?\/\\]+/g, ' ').replace(/\s+/g, ' ').trim();
+const ksStem = t => t.length > 5 ? t.slice(0, Math.max(5, t.length - 2)) : t;
+function ksBuild() {
+  const SAVE = { ...S.sub }, keep = CHARTS.slice(), out = [];
+  const views = [];
+  TABS.forEach(t => {
+    if (t.id === 'ov') { views.push({ tab: 'ov', field: 'all', sub: {} }); return; }
+    FIELDS.forEach(k => {
+      if (t.id === 'geo') { views.push({ tab: t.id, field: k, sub: { geoView: 'res' } }); if (DATA.geo[k] && DATA.geo[k].info) views.push({ tab: t.id, field: k, sub: { geoView: 'dev' } }); }
+      else if (t.id === 'tech') { const T = DATA.tech && DATA.tech[k]; if (T) T.schemes.forEach(sc => views.push({ tab: 'tech', field: k, sub: { tech: sc.id } })); }
+      else views.push({ tab: t.id, field: k, sub: {} });
+    });
+  });
+  const P = new DOMParser();
+  views.forEach(v => {
+    Object.keys(S.sub).forEach(x => delete S.sub[x]); Object.assign(S.sub, SAVE, v.sub);
+    CHARTS.length = 0; let html;
+    try { html = v.field === 'all' ? RENDER[v.tab].all() : RENDER[v.tab].field(v.field); } catch (e) { return; }
+    const doc = P.parseFromString(`<div>${html}</div>`, 'text/html');
+    const tabT = (TABS.find(t => t.id === v.tab) || {}).t;
+    const base = { tab: v.tab, field: v.field, sub: v.sub, tabT };
+    let sec = '', pan = '';
+    const tx = el => el ? el.textContent.replace(/\s+/g, ' ').trim() : '';
+    const kv = el => { if (!el) return ''; const sm = el.querySelector('small'), u = sm ? tx(sm) : '', a = tx(el); return (u && a.endsWith(u) ? a.slice(0, a.length - u.length).trim() + ' ' + u : a); };
+    doc.querySelectorAll('.sub-h, .chart-head h3, .kpi, .params > div, .gi-facts > div, .gi-obj li, table, .hb-row, .tf-n').forEach(el => {
+      if (el.matches('.sub-h')) { sec = tx(el); pan = ''; out.push({ ...base, type: 'sec', label: sec, sec: '' }); return; }
+      if (el.matches('.chart-head h3')) { pan = tx(el); out.push({ ...base, type: 'sec', label: pan, sec }); return; }
+      const ctx = { sec, pan };
+      if (el.matches('.kpi')) out.push({ ...base, ...ctx, type: 'val', label: tx(el.querySelector('.l')), value: kv(el.querySelector('.v')), note: tx(el.querySelector('.s')) });
+      else if (el.matches('.params > div')) out.push({ ...base, ...ctx, type: 'val', label: tx(el.querySelector('.l')), value: kv(el.querySelector('.v')) });
+      else if (el.matches('.gi-facts > div')) out.push({ ...base, ...ctx, type: 'val', label: tx(el.querySelector('dt')), value: tx(el.querySelector('dd')) });
+      else if (el.matches('.gi-obj li')) out.push({ ...base, ...ctx, type: 'val', label: tx(el.querySelector('b')), value: '', note: tx(el.querySelector('span')) });
+      else if (el.matches('.tf-n')) { const t = tx(el); if (t) out.push({ ...base, ...ctx, type: 'sec', label: t, sec: pan || sec }); }
+      else if (el.matches('.hb-row')) { const l = el.querySelector('.hb-l'); const x = l && l.querySelector('.hb-x'); const lab = l ? tx(l).replace(tx(x), '').trim() : ''; out.push({ ...base, ...ctx, type: 'val', label: lab, value: [...el.querySelectorAll('.hb-v')].map(tx).filter(Boolean).join(' / '), note: tx(x) }); }
+      else if (el.matches('table')) {
+        const hd = [...el.querySelectorAll('thead th')].map(tx);
+        el.querySelectorAll('tbody tr:not(.grp)').forEach(tr => { const c = [...tr.children].map(tx); if (!c[0]) return; out.push({ ...base, ...ctx, type: 'row', label: c[0] + (c[1] && !/\d/.test(c[1]) && hd[1] && !/,|%/.test(hd[1]) ? ' · ' + c[1] : ''), cols: hd.slice(1).map((h, i) => [h, c[i + 1]]).filter(x => x[1] && x[1] !== '—').slice(0, 8) }); });
+      }
+    });
+    CHARTS.forEach(c => {
+      const el = doc.getElementById(c.id), sp = c.spec; if (!sp || !sp.cats || !sp.series) return;
+      const p = el && el.closest('.panel'), ttl = p ? tx(p.querySelector('.chart-head h3')) : (sp.title || '');
+      sp.series.forEach(s => (s.values || []).forEach((val, i) => {
+        if (val == null || !isFinite(val)) return;
+        const cat = String(sp.cats[i]); let cl = cat; try { cl = sp.tipTitle ? tx(P.parseFromString(sp.tipTitle(sp.cats[i], i), 'text/html').body) : sp.xFmt ? sp.xFmt(sp.cats[i]) : cat; } catch (e) { /* подпись по умолчанию */ }
+        out.push({ ...base, type: 'pt', label: s.name, cat, catL: cl, value: fmt(val, Math.abs(val) < 10 ? 2 : 1) + (s.unit ? ' ' + s.unit : ''), pan: ttl, sec: '' });
+      }));
+    });
+  });
+  Object.keys(S.sub).forEach(x => delete S.sub[x]); Object.assign(S.sub, SAVE);
+  CHARTS.length = 0; keep.forEach(c => CHARTS.push(c));
+  if (MAP_HTML) { const mt = document.querySelector('#mapSec .sec-head'); out.push({ tab: 'mk', field: 'all', sub: {}, tabT: 'Маркетинг', type: 'sec', map: true, label: 'Карта: месторождения и маршруты экспорта', note: 'карта месторождений нефтепроводы трубопроводы маршруты экспорта НПЗ точки сдачи КТК КТО Атырау–Самара КазТрансОйл география расположение ' + (mt ? mt.textContent : ''), sec: '' }); }
+  out.forEach(e => { e.lab = ksNorm(e.label + ' ' + (e.catL || '')); e.txt = ksNorm([e.tabT, e.sec, e.pan, e.label, e.catL, e.note, (e.cols || []).map(c => c[0]).join(' ')].join(' ')); });
+  return out;
+}
+const KS_SYN = [['надеж', 'отказ', 'эффектив', 'простой', 'простои'], ['выброс', 'пг', 'парник', 'co2', 'со2'], ['кс', 'казахстанск', 'местн', 'мс'], ['чдд', 'npv', 'доход', 'выручк', 'прибыл'], ['электроэнерг', 'электрич', 'энерг'], ['скваж', 'фонд'], ['карт', 'маршрут', 'нефтепровод', 'трубопровод'], ['кин', 'коэффициент извлечен'], ['газ', 'газов'], ['нефт', 'жу', 'жидк']];
+function ksVar(t) { const g = KS_SYN.find(g => g.some(v => t.startsWith(v) || v.startsWith(t) && t.length >= 3)); return g ? [t].concat(g) : [t]; }
+function ksParse(q) {
+  let n = ksNorm(q); const r = { fields: [], mon: null, year: null, toks: [] };
+  Object.entries(KS_FIELD).forEach(([k, al]) => al.forEach(a => { if (n.includes(a)) { if (!r.fields.includes(k)) r.fields.push(k); n = n.replace(new RegExp(a + '\\S*', 'g'), ' '); } }));
+  const y = n.match(/\b(20\d\d)\b/); if (y) { r.year = +y[1]; n = n.replace(y[0], ' '); }
+  n.split(' ').forEach(t => {
+    if (!t) return;
+    const mi = KS_MON.findIndex(m => m === 'ма' ? /^ма[йяе]$/.test(t) : t.startsWith(m)); if (mi >= 0) { r.mon = mi + 1; return; }
+    if (KS_STOP.has(t) || t.length < 2) return;
+    r.toks.push(ksStem(t));
+  });
+  return r;
+}
+function ksCatMatch(e, r) {
+  const m = String(e.cat).match(/^(\d{4})(?:-(\d{2}))?/);
+  if (!m) return !r.mon && !r.year ? true : false;
+  if (r.year && +m[1] !== r.year) return false;
+  if (r.mon) return m[2] && +m[2] === r.mon;
+  return r.year ? !m[2] : false;
+}
+function ksSearch(q) {
+  if (!KS.idx) KS.idx = ksBuild();
+  const r = ksParse(q); if (!r.toks.length && !r.fields.length) return { r, ans: [], secs: [] };
+  const timed = r.mon || r.year;
+  let sc = KS.idx.map(e => {
+    if (r.fields.length && !r.fields.includes(e.field) && e.field !== 'all') return null;
+    if (e.type === 'pt' && (!timed || !ksCatMatch(e, r))) return null;
+    let s = 0, all = true;
+    r.toks.forEach(t => { const V = ksVar(t); if (V.some(v => e.lab.includes(v))) s += 2; else if (V.some(v => e.txt.includes(v))) s += 1; else all = false; });
+    if (!r.toks.length) s = e.type === 'sec' ? 1 : 0.5;
+    if (!s) return null;
+    if (all) s += 2;
+    if (e.type === 'val') s += .6; if (e.type === 'pt') s += timed ? 2.5 : 0; if (e.type === 'row') s += .3;
+    if (e.field === 'all' && r.fields.length && !e.map) s -= 3;
+    if (/факт/.test(e.lab)) s += .1;
+    if (e.map) s += 3;
+    return { e, s };
+  }).filter(Boolean);
+  if (timed && !r.year && r.mon) { // месяц без года: самый поздний год, где есть данные
+    const ys = sc.filter(x => x.e.type === 'pt').map(x => +String(x.e.cat).slice(0, 4)); const ly = Math.max(...ys);
+    if (isFinite(ly)) sc = sc.filter(x => x.e.type !== 'pt' || +String(x.e.cat).slice(0, 4) === ly);
+  }
+  sc.sort((a, b) => b.s - a.s);
+  const best = sc.length ? sc[0].s : 0, seen = new Set();
+  const uniq = list => list.filter(x => { const k = [x.e.type, x.e.field, x.e.tab, x.e.label, x.e.value, x.e.catL, x.e.pan].join('|'); if (seen.has(k)) return false; seen.add(k); return true; });
+  const ans = uniq(sc.filter(x => x.e.type !== 'sec' && x.s >= best * .6)).slice(0, 10);
+  const secs = uniq(sc.filter(x => x.e.type === 'sec')).slice(0, 6);
+  return { r, ans, secs };
+}
+function ksGo(e) {
+  document.querySelector('.ks-modal') && document.querySelector('.ks-modal').remove();
+  if (e.map) { S.tab = 'mk'; if (S.field === undefined) S.field = 'all'; render(); setTimeout(() => { const m = $('#mapSec'); if (m) { m.scrollIntoView({ behavior: 'smooth', block: 'start' }); m.classList.add('ks-flash'); setTimeout(() => m.classList.remove('ks-flash'), 2600); } }, 150); return; }
+  S.tab = e.tab; S.field = e.field; Object.assign(S.sub, e.sub || {}); render();
+  const want = ksNorm(e.type === 'sec' ? e.label : (e.pan || e.sec || e.label));
+  setTimeout(() => {
+    const els = [...document.querySelectorAll('#main .sub-h, #main .chart-head h3, #main .kpi .l, #main td:first-child, #main .tf-n')];
+    const t = els.find(x => ksNorm(x.textContent) === want) || els.find(x => ksNorm(x.textContent).includes(want)) || (e.type !== 'sec' && els.find(x => ksNorm(x.textContent) === ksNorm(e.label)));
+    const box = t && (t.closest('.panel, .kpi, tr, .tf-n') || t);
+    if (box) { box.scrollIntoView({ behavior: 'smooth', block: 'center' }); box.classList.add('ks-flash'); setTimeout(() => box.classList.remove('ks-flash'), 2600); }
+  }, 120);
+}
+const KS_EX = ['карта маршрутов экспорта', 'добыча нефти ТШО октябрь', 'фонд скважин КПО', 'КИН Дунга', 'выбросы ПГ НКОК 2025', 'местное содержание ТШО', 'вязкость нефти Кашаган', 'выработка электроэнергии ТШО август'];
+function ksOpen(q0 = '') {
+  if (document.querySelector('.ks-modal')) return;
+  const m = document.createElement('div'); m.className = 'ks-modal'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-label', 'Поиск по модели');
+  m.innerHTML = `<div class="ks-box"><div class="ks-top"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input type="search" class="ks-in" placeholder="Спросите о модели: например, «добыча нефти ТШО октябрь»" autocomplete="off" spellcheck="false"><button type="button" class="ks-x" aria-label="Закрыть">Esc</button></div><div class="ks-res" aria-live="polite"></div></div>`;
+  document.body.appendChild(m);
+  const inp = m.querySelector('.ks-in'), res = m.querySelector('.ks-res');
+  const close = () => { m.remove(); document.removeEventListener('keydown', kd); };
+  const kd = ev => { if (ev.key === 'Escape') close(); };
+  document.addEventListener('keydown', kd);
+  m.addEventListener('click', ev => { if (ev.target === m || ev.target.closest('.ks-x')) close(); });
+  let cur = [];
+  const chip = e => `<span class="ks-chip">${e.map ? 'Карта' : e.field === 'all' ? 'Все' : esc(FS(e.field))}</span><span class="ks-tab">${esc(e.tabT)}</span>`;
+  const draw = () => {
+    const q = inp.value.trim();
+    if (!q) { res.innerHTML = `<p class="ks-hint">Пишите обычными словами: показатель, месторождение и при необходимости месяц или год. Поиск работает в браузере — данные никуда не отправляются.</p><div class="ks-ex">${KS_EX.map(x => `<button type="button" data-ksq="${esc(x)}">${esc(x)}</button>`).join('')}</div>`; return; }
+    if (!KS.idx) res.innerHTML = '<p class="ks-hint">Готовлю индекс по модели…</p>';
+    setTimeout(() => {
+      const { r, ans, secs } = ksSearch(q); cur = ans.map(x => x.e).concat(secs.map(x => x.e));
+      if (!cur.length) { res.innerHTML = `<p class="ks-hint">Ничего не нашлось. Попробуйте другое слово (например, «добыча», «запасы», «скважины», «выбросы», «КИН») и укажите месторождение.</p>`; return; }
+      const flt = [r.fields.length ? r.fields.map(FS).join(', ') : '', r.mon ? KS_MN[r.mon - 1] + (r.year ? ' ' + r.year : '') : r.year || ''].filter(Boolean).join(' · ');
+      res.innerHTML = (flt ? `<p class="ks-flt">Фильтр: ${esc(flt)}</p>` : '') +
+        (ans.length ? `<h4>Ответы</h4>` + ans.map((x, i) => { const e = x.e; const val = e.type === 'row' ? e.cols.map(c => `<span><em>${esc(c[0])}</em> ${esc(c[1])}</span>`).join('') : `<b>${esc(e.value || '')}</b>`; return `<button type="button" class="ks-a" data-ki="${i}"><span class="ks-l">${esc(e.label)}${e.catL ? ` · ${esc(e.catL)}` : ''}${e.note ? `<small>${esc(e.note)}</small>` : ''}</span><span class="ks-v${e.type === 'row' ? ' row' : ''}">${val}</span><span class="ks-m">${chip(e)}${e.pan || e.sec ? `<span class="ks-p">${esc(e.pan || e.sec)}</span>` : ''}</span></button>`; }).join('') : '') +
+        (secs.length ? `<h4>Разделы</h4>` + secs.map((x, i) => `<button type="button" class="ks-s" data-ki="${ans.length + i}"><span class="ks-l">${esc(x.e.label)}</span><span class="ks-m">${chip(x.e)}</span></button>`).join('') : '');
+    }, KS.idx ? 0 : 30);
+  };
+  let tmr; inp.addEventListener('input', () => { clearTimeout(tmr); tmr = setTimeout(draw, 160); });
+  inp.addEventListener('keydown', ev => { if (ev.key === 'Enter') { const b = res.querySelector('[data-ki]'); if (b) b.click(); } });
+  res.addEventListener('click', ev => { const ex = ev.target.closest('[data-ksq]'); if (ex) { inp.value = ex.dataset.ksq; draw(); inp.focus(); return; } const b = ev.target.closest('[data-ki]'); if (b) { const e = cur[+b.dataset.ki]; close(); ksGo(e); } });
+  inp.value = q0; draw(); setTimeout(() => inp.focus(), 30);
+}
+function ksMount() {
+  const w = document.querySelector('.utilbar .wrap'); if (!w || w.querySelector('.ks-btn')) return;
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'theme-btn ks-btn'; b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>Поиск по модели <kbd>Ctrl K</kbd>';
+  b.addEventListener('click', () => ksOpen()); w.insertBefore(b, w.querySelector('#themeBtn'));
+}
+document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'л' || e.key === 'K') && DATA) { e.preventDefault(); ksOpen(); } });
+
 const EXP_SECTIONS = [['ov', 'Общие данные'], ['geo', 'Геология'], ['prod', 'Добыча'], ['mk', 'Маркетинг'], ['en', 'Электроэнергетика'], ['eco', 'Экология'], ['rel', 'Надёжность'], ['lc', 'Местное содержание'], ['econ', 'Экономика'], ['proj', 'Проекты']];
 const FIELD_HEX = { Y: '0D3B66', X: '2C7BB6', Z: '6FB1DC', D: '8A9BB0' };
 const asofText = () => { const l = LAST_COMMON(); return `${MNF[+l.slice(5) - 1]} ${l.slice(0, 4)}`; };
@@ -2688,6 +2978,7 @@ async function unlockPayload(pw) {
 }
 function startApp() {
   const eb = $('#exportBtn'); if (eb && !eb.dataset.bound) { eb.dataset.bound = '1'; eb.addEventListener('click', openExport); }
+  ksMount();
   const last = LAST_COMMON();
   $('#asof').textContent = `Факт добычи: январь–${MNF[+last.slice(5) - 1]} ${last.slice(0, 4)}`;
   $('#eyebrow').textContent = `Обзор по дисциплинам · данные на ${MN[+last.slice(5) - 1]}. ${last.slice(0, 4)}`;
